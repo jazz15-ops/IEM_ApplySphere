@@ -77,12 +77,57 @@ export interface AdminApplicationDetail {
   readiness: ReadinessResponse;
 }
 
+export interface AnalyticsOverview {
+  totalApplications: number;
+  draft: number;
+  submitted: number;
+  underReview: number;
+  selected: number;
+  rejected: number;
+}
+
+export interface StatusCount {
+  status: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'SELECTED' | 'REJECTED';
+  count: number;
+}
+
+export interface DepartmentCount {
+  department: string;
+  count: number;
+}
+
+export interface DecisionSummary {
+  decidedApplications: number;
+  selected: number;
+  rejected: number;
+  selectionRate: number;
+}
+
+export interface ReviewPipeline {
+  awaitingReview: number;
+  currentlyUnderReview: number;
+  completedDecisions: number;
+}
+
+export interface AdminAnalyticsResponse {
+  overview: AnalyticsOverview;
+  byStatus: StatusCount[];
+  byDepartment: DepartmentCount[];
+  decisions: DecisionSummary;
+  reviewPipeline: ReviewPipeline;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AdminService {
   private http = inject(HttpClient);
   private readonly API_URL = 'http://localhost:3000/api/admin/applications';
+  private readonly ANALYTICS_URL = 'http://localhost:3000/api/admin/analytics';
+
+  getAnalytics(): Observable<AdminAnalyticsResponse> {
+    return this.http.get<AdminAnalyticsResponse>(this.ANALYTICS_URL);
+  }
 
   getApplications(filters: { status?: string; department?: string; search?: string; page?: number; limit?: number } = {}): Observable<AdminApplicationsResponse> {
     let params = new HttpParams();

@@ -25,6 +25,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/admin/applications', adminRoutes);
 
 // Global Error Handler - prevents leaking stack traces to clients

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { AdminService, AdminApplicationListItem, AdminPaginationMeta } from '../../core/services/admin.service';
+import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnalyticsResponse } from '../../core/services/admin.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -12,7 +12,7 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta } from '../
   template: `
     <div class="dashboard-layout">
       <header class="navbar">
-        <div class="brand">IEM ApplySphere | Admin Portal</div>
+        <div class="brand">IEM ApplySphere | Admin Analytics & Review Portal</div>
         <div class="user-info">
           <span>Welcome, <strong>{{ currentUser()?.name }}</strong> (Administrator)</span>
           <button (click)="logout()" class="btn-logout">Logout</button>
@@ -20,8 +20,142 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta } from '../
       </header>
 
       <main class="content">
+        <!-- Analytics Section -->
+        <section class="analytics-section">
+          <div class="section-title-bar">
+            <h3>Applications Analytics & Workload Summary</h3>
+            <button (click)="loadAnalytics()" class="btn-sm btn-refresh" [disabled]="isAnalyticsLoading()">
+              🔄 Refresh Analytics
+            </button>
+          </div>
+
+          <!-- Analytics Loading & Error States -->
+          <div *ngIf="isAnalyticsLoading()" class="analytics-loading">
+            <p>Gathering MongoDB statistical aggregation data...</p>
+          </div>
+
+          <div *ngIf="analyticsError()" class="alert alert-error">
+            {{ analyticsError() }}
+          </div>
+
+          <!-- Analytics Content Widgets -->
+          <ng-container *ngIf="!isAnalyticsLoading() && analytics() as data">
+            <!-- 1. Summary Cards -->
+            <div class="metrics-grid">
+              <div class="metric-card total-card">
+                <span class="metric-label">Total Applications</span>
+                <span class="metric-value">{{ data.overview.totalApplications }}</span>
+                <span class="metric-sub">All system records</span>
+              </div>
+              <div class="metric-card submitted-card">
+                <span class="metric-label">Awaiting Review</span>
+                <span class="metric-value">{{ data.overview.submitted }}</span>
+                <span class="metric-sub">Submitted applications</span>
+              </div>
+              <div class="metric-card review-card">
+                <span class="metric-label">Under Review</span>
+                <span class="metric-value">{{ data.overview.underReview }}</span>
+                <span class="metric-sub">In-progress evaluations</span>
+              </div>
+              <div class="metric-card selected-card">
+                <span class="metric-label">Selected</span>
+                <span class="metric-value">{{ data.overview.selected }}</span>
+                <span class="metric-sub">Approved admissions</span>
+              </div>
+              <div class="metric-card rejected-card">
+                <span class="metric-label">Rejected</span>
+                <span class="metric-value">{{ data.overview.rejected }}</span>
+                <span class="metric-sub">Not accepted</span>
+              </div>
+            </div>
+
+            <div class="analytics-detail-grid">
+              <!-- 2. Status Distribution (CSS Progress Bars) -->
+              <div class="analytics-box">
+                <h4>Status Distribution</h4>
+                <div class="status-bars">
+                  <div *ngFor="let item of data.byStatus" class="status-bar-item">
+                    <div class="status-bar-header">
+                      <span class="status-bar-name">{{ formatStatusLabel(item.status) }}</span>
+                      <span class="status-bar-count"><strong>{{ item.count }}</strong> ({{ getPercentage(item.count, data.overview.totalApplications) }}%)</span>
+                    </div>
+                    <div class="progress-track">
+                      <div
+                        class="progress-fill"
+                        [ngClass]="getStatusFillClass(item.status)"
+                        [style.width.%]="getPercentage(item.count, data.overview.totalApplications)"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Decision Summary & Pipeline Workload -->
+              <div class="analytics-box">
+                <h4>Decision & Workload Summary</h4>
+                <div class="decision-rate-widget">
+                  <div class="rate-circle">
+                    <span class="rate-number">{{ data.decisions.selectionRate }}%</span>
+                    <span class="rate-label">Selection Rate</span>
+                  </div>
+                  <div class="rate-details">
+                    <div class="rate-detail-line">
+                      <span>Decided Applications:</span>
+                      <strong>{{ data.decisions.decidedApplications }}</strong>
+                    </div>
+                    <div class="rate-detail-line text-success">
+                      <span>Selected Candidates:</span>
+                      <strong>{{ data.decisions.selected }}</strong>
+                    </div>
+                    <div class="rate-detail-line text-danger">
+                      <span>Rejected Candidates:</span>
+                      <strong>{{ data.decisions.rejected }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="pipeline-summary-list">
+                  <div class="pipeline-item">
+                    <span>Awaiting Initial Review:</span>
+                    <span class="badge-status badge-submitted">{{ data.reviewPipeline.awaitingReview }}</span>
+                  </div>
+                  <div class="pipeline-item">
+                    <span>Currently Under Evaluation:</span>
+                    <span class="badge-status badge-review">{{ data.reviewPipeline.currentlyUnderReview }}</span>
+                  </div>
+                  <div class="pipeline-item">
+                    <span>Completed Final Decisions:</span>
+                    <span class="badge-status badge-selected">{{ data.reviewPipeline.completedDecisions }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Department Distribution -->
+            <div class="analytics-box dept-box">
+              <h4>Applications by Preferred Department</h4>
+              <div *ngIf="data.byDepartment.length === 0" class="empty-dept">
+                <p>No department data recorded yet.</p>
+              </div>
+              <div class="dept-grid" *ngIf="data.byDepartment.length > 0">
+                <div *ngFor="let dept of data.byDepartment" class="dept-card">
+                  <div class="dept-name">{{ dept.department }}</div>
+                  <div class="dept-count-badge">{{ dept.count }} Applications</div>
+                  <div class="progress-track mt-1">
+                    <div
+                      class="progress-fill fill-dept"
+                      [style.width.%]="getPercentage(dept.count, data.overview.totalApplications)"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ng-container>
+        </section>
+
+        <!-- Existing Application Review Filter & Table Header Card -->
         <div class="header-card">
-          <h2>Admission Applications Review</h2>
+          <h2>Admission Applications List</h2>
           <p>Review submitted candidate applications, filter by status or department, inspect documents, and execute status decisions.</p>
 
           <!-- Filter & Search Bar -->
@@ -162,8 +296,66 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta } from '../
     .brand { font-size: 1.1rem; font-weight: 700; color: #38bdf8; }
     .user-info { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; }
     .btn-logout { background: #ef4444; color: #fff; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-weight: 600; }
-    .content { padding: 2rem; max-width: 1100px; margin: 0 auto; }
+    .content { padding: 2rem; max-width: 1200px; margin: 0 auto; }
     
+    /* Analytics Styles */
+    .analytics-section { margin-bottom: 2rem; }
+    .section-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .section-title-bar h3 { margin: 0; color: #0f172a; font-size: 1.15rem; }
+    .btn-refresh { background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; font-weight: 600; cursor: pointer; }
+    .btn-refresh:hover { background: #cbd5e1; }
+    .analytics-loading { background: #fff; padding: 1.5rem; text-align: center; border-radius: 8px; border: 1px solid #e2e8f0; color: #64748b; }
+
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .metric-card { background: #fff; border-radius: 8px; padding: 1.25rem; border: 1px solid #e2e8f0; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .metric-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; }
+    .metric-value { font-size: 1.8rem; font-weight: 800; color: #0f172a; margin: 0.3rem 0; }
+    .metric-sub { font-size: 0.75rem; color: #94a3b8; }
+    
+    .total-card { border-left: 4px solid #0284c7; }
+    .submitted-card { border-left: 4px solid #0369a1; }
+    .review-card { border-left: 4px solid #6b21a8; }
+    .selected-card { border-left: 4px solid #15803d; }
+    .rejected-card { border-left: 4px solid #b91c1c; }
+
+    .analytics-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    @media (max-width: 768px) { .analytics-detail-grid { grid-template-columns: 1fr; } }
+
+    .analytics-box { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .analytics-box h4 { margin: 0 0 1rem 0; font-size: 0.95rem; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem; }
+    
+    .status-bars { display: flex; flex-direction: column; gap: 0.85rem; }
+    .status-bar-header { display: flex; justify-content: space-between; font-size: 0.8rem; color: #334155; margin-bottom: 0.25rem; }
+    .progress-track { background: #f1f5f9; height: 10px; border-radius: 6px; overflow: hidden; width: 100%; }
+    .progress-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease; }
+    .fill-draft { background: #eab308; }
+    .fill-submitted { background: #0284c7; }
+    .fill-review { background: #9333ea; }
+    .fill-selected { background: #16a34a; }
+    .fill-rejected { background: #dc2626; }
+    .fill-dept { background: #3b82f6; }
+
+    .decision-rate-widget { display: flex; align-items: center; gap: 1.5rem; padding-bottom: 1rem; border-bottom: 1px dashed #e2e8f0; margin-bottom: 1rem; }
+    .rate-circle { background: #0f172a; color: #38bdf8; width: 90px; height: 90px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .rate-number { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+    .rate-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; margin-top: 0.2rem; }
+    .rate-details { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.85rem; flex: 1; }
+    .rate-detail-line { display: flex; justify-content: space-between; color: #475569; }
+    .text-success { color: #16a34a; }
+    .text-danger { color: #dc2626; }
+
+    .pipeline-summary-list { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.8rem; }
+    .pipeline-item { display: flex; justify-content: space-between; align-items: center; color: #475569; }
+
+    .dept-box { margin-bottom: 1.5rem; }
+    .dept-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+    .dept-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 0.85rem; }
+    .dept-name { font-weight: 700; font-size: 0.85rem; color: #0f172a; margin-bottom: 0.25rem; }
+    .dept-count-badge { font-size: 0.75rem; color: #0284c7; font-weight: 600; }
+    .mt-1 { margin-top: 0.5rem; }
+    .empty-dept { text-align: center; color: #94a3b8; padding: 1rem; font-size: 0.85rem; }
+
+    /* Application Table Header Styles */
     .header-card { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .header-card h2 { margin: 0 0 0.5rem 0; color: #0f172a; }
     .header-card p { margin: 0 0 1.25rem 0; color: #64748b; font-size: 0.9rem; }
@@ -234,13 +426,35 @@ export class AdminDashboardComponent implements OnInit {
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
 
+  // Analytics Signals
+  analytics = signal<AdminAnalyticsResponse | null>(null);
+  isAnalyticsLoading = signal(false);
+  analyticsError = signal<string | null>(null);
+
   searchQuery = '';
   statusFilter = '';
   deptFilter = '';
   currentPage = 1;
 
   ngOnInit(): void {
+    this.loadAnalytics();
     this.loadApplications();
+  }
+
+  loadAnalytics(): void {
+    this.isAnalyticsLoading.set(true);
+    this.analyticsError.set(null);
+
+    this.adminService.getAnalytics().subscribe({
+      next: (data) => {
+        this.isAnalyticsLoading.set(false);
+        this.analytics.set(data);
+      },
+      error: (err) => {
+        this.isAnalyticsLoading.set(false);
+        this.analyticsError.set(err.error?.message || 'Failed to load admin analytics summary.');
+      }
+    });
   }
 
   loadApplications(): void {
@@ -264,6 +478,22 @@ export class AdminDashboardComponent implements OnInit {
         this.errorMessage.set(err.error?.message || 'Failed to load admission applications.');
       }
     });
+  }
+
+  getPercentage(count: number, total: number): number {
+    if (!total || total === 0) return 0;
+    return Math.round((count / total) * 100);
+  }
+
+  getStatusFillClass(status: string): string {
+    switch (status) {
+      case 'DRAFT': return 'fill-draft';
+      case 'SUBMITTED': return 'fill-submitted';
+      case 'UNDER_REVIEW': return 'fill-review';
+      case 'SELECTED': return 'fill-selected';
+      case 'REJECTED': return 'fill-rejected';
+      default: return 'fill-submitted';
+    }
   }
 
   applyFilters(): void {
