@@ -9,6 +9,22 @@ export interface AcademicRecord {
   percentage?: number | null;
 }
 
+export interface DocumentMetadata {
+  originalName: string;
+  storedName: string;
+  relativePath: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+}
+
+export interface DocumentSlots {
+  class10Marksheet?: DocumentMetadata | null;
+  class12Marksheet?: DocumentMetadata | null;
+  idProof?: DocumentMetadata | null;
+  passportPhoto?: DocumentMetadata | null;
+}
+
 export interface Application {
   _id?: string;
   applicant?: string;
@@ -34,6 +50,7 @@ export interface Application {
   programLevel?: string;
   programName?: string;
   preferredDepartment?: string;
+  documents?: DocumentSlots;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -55,5 +72,28 @@ export class ApplicationService {
 
   updateMyApplication(payload: Partial<Application>): Observable<{ message: string; application: Application }> {
     return this.http.patch<{ message: string; application: Application }>(`${this.API_URL}/me`, payload);
+  }
+
+  uploadDocument(documentType: string, file: File): Observable<{ message: string; documentType: string; metadata: DocumentMetadata }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<{ message: string; documentType: string; metadata: DocumentMetadata }>(
+      `${this.API_URL}/me/documents/${documentType}`,
+      formData
+    );
+  }
+
+  deleteDocument(documentType: string): Observable<{ message: string; documentType: string }> {
+    return this.http.delete<{ message: string; documentType: string }>(`${this.API_URL}/me/documents/${documentType}`);
+  }
+
+  getDocumentMetadata(): Observable<{ documents: DocumentSlots }> {
+    return this.http.get<{ documents: DocumentSlots }>(`${this.API_URL}/me/documents`);
+  }
+
+  downloadDocumentFile(documentType: string): Observable<Blob> {
+    return this.http.get(`${this.API_URL}/me/documents/${documentType}/file`, {
+      responseType: 'blob'
+    });
   }
 }

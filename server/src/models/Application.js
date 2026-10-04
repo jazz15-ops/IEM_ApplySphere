@@ -28,6 +28,18 @@ const academicSubSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const documentMetaSchema = new mongoose.Schema(
+  {
+    originalName: { type: String, required: true },
+    storedName: { type: String, required: true },
+    relativePath: { type: String, required: true },
+    mimeType: { type: String, required: true },
+    size: { type: Number, required: true },
+    uploadedAt: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
+
 const applicationSchema = new mongoose.Schema(
   {
     applicant: {
@@ -74,7 +86,15 @@ const applicationSchema = new mongoose.Schema(
     // Program Selection
     programLevel: { type: String, trim: true, default: 'Undergraduate' },
     programName: { type: String, trim: true, default: 'B.Tech Computer Science' },
-    preferredDepartment: { type: String, trim: true, default: 'School of Engineering & Technology' }
+    preferredDepartment: { type: String, trim: true, default: 'School of Engineering & Technology' },
+
+    // Document References (Metadata ONLY, no binary contents)
+    documents: {
+      class10Marksheet: { type: documentMetaSchema, default: null },
+      class12Marksheet: { type: documentMetaSchema, default: null },
+      idProof: { type: documentMetaSchema, default: null },
+      passportPhoto: { type: documentMetaSchema, default: null }
+    }
   },
   {
     timestamps: true

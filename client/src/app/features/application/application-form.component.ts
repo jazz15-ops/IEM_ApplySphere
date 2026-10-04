@@ -1,8 +1,15 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { ApplicationService, Application } from '../../core/services/application.service';
+import { RouterLink } from '@angular/router';
+import { ApplicationService, Application, DocumentSlots, DocumentMetadata } from '../../core/services/application.service';
+
+interface DocSlotConfig {
+  key: keyof DocumentSlots;
+  label: string;
+  accept: string;
+  hint: string;
+}
 
 @Component({
   selector: 'app-application-form',
@@ -185,6 +192,51 @@ import { ApplicationService, Application } from '../../core/services/application
             </button>
           </div>
         </form>
+
+        <!-- Section 5: Document Uploads -->
+        <fieldset class="section-card mt-2" *ngIf="application()">
+          <legend>5. Required Document Uploads</legend>
+          <p class="section-hint">Upload required certificates & ID proof (PDF, JPG, PNG up to 5 MB). Passport photo must be an image file.</p>
+
+          <div class="doc-grid">
+            <div class="doc-card" *ngFor="let slot of docSlots">
+              <div class="doc-header">
+                <strong>{{ slot.label }}</strong>
+                <span [class]="getDocMeta(slot.key) ? 'badge-uploaded' : 'badge-pending'">
+                  {{ getDocMeta(slot.key) ? 'Uploaded' : 'Not Uploaded' }}
+                </span>
+              </div>
+              <p class="hint-text">{{ slot.hint }}</p>
+
+              <div *ngIf="getDocMeta(slot.key) as doc" class="doc-info">
+                <p class="file-name">📄 {{ doc.originalName }} ({{ (doc.size / 1024).toFixed(1) }} KB)</p>
+                <div class="doc-actions">
+                  <button (click)="viewDocument(slot.key)" [disabled]="isDownloading(slot.key)" class="btn-sm btn-view">
+                    {{ isDownloading(slot.key) ? 'Opening...' : 'View / Download' }}
+                  </button>
+                  <button (click)="removeDocument(slot.key)" class="btn-sm btn-delete">Remove</button>
+                </div>
+              </div>
+
+              <div class="upload-controls" *ngIf="!getDocMeta(slot.key)">
+                <input
+                  type="file"
+                  [accept]="slot.accept"
+                  (change)="onFileSelected(slot.key, $event)"
+                  #fileInput
+                  class="file-input"
+                />
+                <button
+                  (click)="uploadFile(slot.key, fileInput)"
+                  [disabled]="!selectedFiles[slot.key] || isUploading(slot.key)"
+                  class="btn-sm btn-upload"
+                >
+                  {{ isUploading(slot.key) ? 'Uploading...' : 'Upload' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </fieldset>
       </main>
     </div>
   `,
@@ -199,10 +251,12 @@ import { ApplicationService, Application } from '../../core/services/application
     .badge-draft { background: #fef08a; color: #854d0e; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; }
     .section-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     legend { font-weight: 700; font-size: 1.05rem; color: #0f172a; padding: 0 0.5rem; }
+    .section-hint { font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; }
     .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 0.5rem; }
     .full-width { grid-column: 1 / -1; }
     .sub-heading { color: #334155; margin: 0.5rem 0 0.25rem; font-size: 0.95rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.25rem; }
     .mt { margin-top: 1.25rem; }
+    .mt-2 { margin-top: 2rem; }
     .form-group { display: flex; flex-direction: column; }
     label { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem; }
     .form-control { padding: 0.55rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
@@ -214,15 +268,46 @@ import { ApplicationService, Application } from '../../core/services/application
     .alert { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem; }
     .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
     .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+    /* Documents Grid */
+    .doc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.25rem; margin-top: 1rem; }
+    .doc-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; }
+    .doc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; }
+    .badge-uploaded { background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 4px; }
+    .badge-pending { background: #f1f5f9; color: #64748b; font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.4rem; border-radius: 4px; }
+    .hint-text { font-size: 0.8rem; color: #64748b; margin: 0 0 0.75rem; }
+    .doc-info { margin-top: 0.5rem; background: #fff; padding: 0.6rem; border: 1px solid #e2e8f0; border-radius: 4px; }
+    .file-name { margin: 0 0 0.5rem; font-size: 0.85rem; font-weight: 600; color: #334155; word-break: break-all; }
+    .doc-actions { display: flex; gap: 0.5rem; }
+    .upload-controls { display: flex; gap: 0.5rem; align-items: center; }
+    .file-input { font-size: 0.8rem; width: 100%; }
+    .btn-sm { padding: 0.4rem 0.75rem; border-radius: 4px; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-upload { background: #2563eb; color: #fff; }
+    .btn-upload:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-view { background: #0284c7; color: #fff; }
+    .btn-view:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-delete { background: #dc2626; color: #fff; }
   `]
 })
 export class ApplicationFormComponent implements OnInit {
   private appService = inject(ApplicationService);
 
   application = signal<Application | null>(null);
+  documents = signal<DocumentSlots>({});
   isSaving = signal(false);
   successMessage = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
+
+  selectedFiles: { [key: string]: File | null } = {};
+  uploadingState: { [key: string]: boolean } = {};
+  downloadingState: { [key: string]: boolean } = {};
+
+  docSlots: DocSlotConfig[] = [
+    { key: 'class10Marksheet', label: 'Class 10 Marksheet', accept: '.pdf,.jpg,.jpeg,.png', hint: 'PDF or Image up to 5 MB' },
+    { key: 'class12Marksheet', label: 'Class 12 Marksheet', accept: '.pdf,.jpg,.jpeg,.png', hint: 'PDF or Image up to 5 MB' },
+    { key: 'idProof', label: 'Government ID Proof', accept: '.pdf,.jpg,.jpeg,.png', hint: 'Aadhaar / Passport / Voter ID up to 5 MB' },
+    { key: 'passportPhoto', label: 'Passport Size Photo', accept: '.jpg,.jpeg,.png', hint: 'Image file (JPG/PNG) up to 5 MB' }
+  ];
 
   form: Partial<Application> = {
     firstName: '', middleName: '', lastName: '', dateOfBirth: '', gender: '',
@@ -244,6 +329,7 @@ export class ApplicationFormComponent implements OnInit {
       next: (res) => {
         if (res.application) {
           this.application.set(res.application);
+          this.documents.set(res.application.documents || {});
           this.populateForm(res.application);
         }
       },
@@ -265,6 +351,9 @@ export class ApplicationFormComponent implements OnInit {
         next: (res) => {
           this.isSaving.set(false);
           this.application.set(res.application);
+          if (res.application.documents) {
+            this.documents.set(res.application.documents);
+          }
           this.successMessage.set('Draft application updated successfully!');
         },
         error: (err) => {
@@ -277,6 +366,9 @@ export class ApplicationFormComponent implements OnInit {
         next: (res) => {
           this.isSaving.set(false);
           this.application.set(res.application);
+          if (res.application.documents) {
+            this.documents.set(res.application.documents);
+          }
           this.successMessage.set(`Draft application created! Application No: ${res.application.applicationNumber}`);
         },
         error: (err) => {
@@ -285,6 +377,98 @@ export class ApplicationFormComponent implements OnInit {
         }
       });
     }
+  }
+
+  onFileSelected(slotKey: keyof DocumentSlots, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.selectedFiles[slotKey] = input.files[0];
+    }
+  }
+
+  uploadFile(slotKey: keyof DocumentSlots, inputRef: HTMLInputElement): void {
+    const file = this.selectedFiles[slotKey];
+    if (!file) return;
+
+    this.uploadingState[slotKey] = true;
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+
+    this.appService.uploadDocument(slotKey, file).subscribe({
+      next: (res) => {
+        this.uploadingState[slotKey] = false;
+        this.selectedFiles[slotKey] = null;
+        inputRef.value = '';
+        this.successMessage.set(`Uploaded ${file.name} successfully!`);
+        this.refreshDocMetadata();
+      },
+      error: (err) => {
+        this.uploadingState[slotKey] = false;
+        this.errorMessage.set(err.error?.message || `Failed to upload ${file.name}.`);
+      }
+    });
+  }
+
+  removeDocument(slotKey: keyof DocumentSlots): void {
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+
+    this.appService.deleteDocument(slotKey).subscribe({
+      next: () => {
+        this.successMessage.set(`Document removed successfully.`);
+        this.refreshDocMetadata();
+      },
+      error: (err) => {
+        this.errorMessage.set(err.error?.message || `Failed to remove document.`);
+      }
+    });
+  }
+
+  viewDocument(slotKey: keyof DocumentSlots): void {
+    const docMeta = this.getDocMeta(slotKey);
+    if (!docMeta) return;
+
+    this.downloadingState[slotKey] = true;
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+
+    this.appService.downloadDocumentFile(slotKey).subscribe({
+      next: (blob) => {
+        this.downloadingState[slotKey] = false;
+        const blobUrl = URL.createObjectURL(new Blob([blob], { type: docMeta.mimeType }));
+        window.open(blobUrl, '_blank');
+
+        // Revoke URL after 60 seconds
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 60000);
+      },
+      error: (err) => {
+        this.downloadingState[slotKey] = false;
+        this.errorMessage.set(err.error?.message || 'Failed to download protected file.');
+      }
+    });
+  }
+
+  getDocMeta(slotKey: keyof DocumentSlots): DocumentMetadata | null {
+    const docs = this.documents();
+    return docs ? (docs[slotKey] || null) : null;
+  }
+
+  isUploading(slotKey: keyof DocumentSlots): boolean {
+    return !!this.uploadingState[slotKey];
+  }
+
+  isDownloading(slotKey: keyof DocumentSlots): boolean {
+    return !!this.downloadingState[slotKey];
+  }
+
+  private refreshDocMetadata(): void {
+    this.appService.getDocumentMetadata().subscribe({
+      next: (res) => {
+        this.documents.set(res.documents || {});
+      }
+    });
   }
 
   private populateForm(app: Application): void {
