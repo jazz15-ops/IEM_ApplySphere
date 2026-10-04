@@ -4,6 +4,7 @@ import { RegisterComponent } from './features/auth/register/register.component';
 import { ApplicantDashboardComponent } from './features/dashboard/applicant-dashboard.component';
 import { AdminDashboardComponent } from './features/dashboard/admin-dashboard.component';
 import { ApplicationFormComponent } from './features/application/application-form.component';
+import { AdminReviewDetailComponent } from './features/admin/admin-review-detail.component';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
 
@@ -26,6 +27,12 @@ export const routes: Routes = [
   {
     path: 'admin/dashboard',
     component: AdminDashboardComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { role: 'admin' }
+  },
+  {
+    path: 'admin/applications/:id',
+    component: AdminReviewDetailComponent,
     canActivate: [authGuard, roleGuard],
     data: { role: 'admin' }
   },

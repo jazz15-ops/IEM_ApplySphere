@@ -3,6 +3,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
 const testRoutes = require('./routes/test.routes');
 const applicationRoutes = require('./routes/application.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/admin/applications', adminRoutes);
 
 // Global Error Handler - prevents leaking stack traces to clients
 app.use((err, req, res, next) => {
