@@ -1,0 +1,84 @@
+const mongoose = require('mongoose');
+
+const academicSubSchema = new mongoose.Schema(
+  {
+    board: { type: String, trim: true, default: '' },
+    institutionName: { type: String, trim: true, default: '' },
+    passingYear: {
+      type: Number,
+      validate: {
+        validator: function (v) {
+          if (v === null || v === undefined) return true;
+          return v >= 1970 && v <= 2035;
+        },
+        message: 'Passing year must be between 1970 and 2035'
+      }
+    },
+    percentage: {
+      type: Number,
+      validate: {
+        validator: function (v) {
+          if (v === null || v === undefined) return true;
+          return v >= 0 && v <= 100;
+        },
+        message: 'Percentage must be between 0 and 100'
+      }
+    }
+  },
+  { _id: false }
+);
+
+const applicationSchema = new mongoose.Schema(
+  {
+    applicant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      unique: true
+    },
+    applicationNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true
+    },
+    status: {
+      type: String,
+      enum: ['DRAFT'],
+      default: 'DRAFT',
+      required: true
+    },
+    // Personal Details
+    firstName: { type: String, trim: true, default: '' },
+    middleName: { type: String, trim: true, default: '' },
+    lastName: { type: String, trim: true, default: '' },
+    dateOfBirth: { type: String, trim: true, default: '' },
+    gender: { type: String, trim: true, default: '' },
+    phone: { type: String, trim: true, default: '' },
+    alternatePhone: { type: String, trim: true, default: '' },
+    email: { type: String, trim: true, lowercase: true, default: '' },
+    nationality: { type: String, trim: true, default: '' },
+
+    // Address Details
+    addressLine1: { type: String, trim: true, default: '' },
+    addressLine2: { type: String, trim: true, default: '' },
+    city: { type: String, trim: true, default: '' },
+    state: { type: String, trim: true, default: '' },
+    postalCode: { type: String, trim: true, default: '' },
+    country: { type: String, trim: true, default: '' },
+
+    // Academic Details
+    class10: { type: academicSubSchema, default: () => ({}) },
+    class12: { type: academicSubSchema, default: () => ({}) },
+
+    // Program Selection
+    programLevel: { type: String, trim: true, default: 'Undergraduate' },
+    programName: { type: String, trim: true, default: 'B.Tech Computer Science' },
+    preferredDepartment: { type: String, trim: true, default: 'School of Engineering & Technology' }
+  },
+  {
+    timestamps: true
+  }
+);
+
+module.exports = mongoose.model('Application', applicationSchema);

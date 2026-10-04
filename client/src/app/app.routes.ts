@@ -3,6 +3,7 @@ import { LoginComponent } from './features/auth/login/login.component';
 import { RegisterComponent } from './features/auth/register/register.component';
 import { ApplicantDashboardComponent } from './features/dashboard/applicant-dashboard.component';
 import { AdminDashboardComponent } from './features/dashboard/admin-dashboard.component';
+import { ApplicationFormComponent } from './features/application/application-form.component';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
 
@@ -13,6 +14,12 @@ export const routes: Routes = [
   {
     path: 'applicant/dashboard',
     component: ApplicantDashboardComponent,
+    canActivate: [authGuard, roleGuard],
+    data: { role: 'applicant' }
+  },
+  {
+    path: 'applicant/application',
+    component: ApplicationFormComponent,
     canActivate: [authGuard, roleGuard],
     data: { role: 'applicant' }
   },
