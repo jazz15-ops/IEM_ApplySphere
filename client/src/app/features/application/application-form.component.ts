@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApplicationService, Application, DocumentSlots, DocumentMetadata, ReadinessResponse } from '../../core/services/application.service';
+import { AuthService } from '../../core/services/auth.service';
 
 interface DocSlotConfig {
   key: keyof DocumentSlots;
@@ -306,6 +307,13 @@ interface DocSlotConfig {
         </form>
 
         <!-- Section 5: Document Uploads Cards -->
+        <div class="card-elevated section-fieldset mt-2" *ngIf="!application()">
+          <legend class="section-legend">5. Required Document Attachments</legend>
+          <p class="section-desc">
+            💡 Save your initial draft application using the button above to assign an application tracking identifier and enable document uploads.
+          </p>
+        </div>
+
         <fieldset id="section-documents" class="card-elevated section-fieldset mt-2" *ngIf="application()">
           <legend class="section-legend">5. Required Document Attachments</legend>
           <p class="section-desc" *ngIf="!isLocked()">
@@ -593,7 +601,9 @@ interface DocSlotConfig {
 })
 export class ApplicationFormComponent implements OnInit {
   private applicationService = inject(ApplicationService);
+  private authService = inject(AuthService);
 
+  currentUser = this.authService.currentUserSignal;
   application = signal<Application | null>(null);
   readiness = signal<ReadinessResponse | null>(null);
   isLoading = signal(false);
@@ -651,6 +661,8 @@ export class ApplicationFormComponent implements OnInit {
         this.application.set(app);
         if (app) {
           this.populateForm(app);
+        } else {
+          this.prepopulateNewApplicantForm();
         }
         this.refreshReadiness();
       },
@@ -659,6 +671,25 @@ export class ApplicationFormComponent implements OnInit {
         this.errorMessage.set(err.error?.message || 'Failed to load application profile.');
       }
     });
+  }
+
+  prepopulateNewApplicantForm(): void {
+    const user = this.currentUser();
+    if (user) {
+      if (!this.form.firstName && user.name) {
+        const parts = user.name.trim().split(' ');
+        this.form.firstName = parts[0] || '';
+        if (parts.length > 1) {
+          this.form.lastName = parts.slice(1).join(' ');
+        }
+      }
+      if (!this.form.email && user.email) {
+        this.form.email = user.email;
+      }
+      if (!this.form.phone && user.phone) {
+        this.form.phone = user.phone;
+      }
+    }
   }
 
   refreshReadiness(): void {
@@ -732,10 +763,17 @@ export class ApplicationFormComponent implements OnInit {
       class10: this.form.class10,
       class12: this.form.class12,
       programLevel: this.form.programLevel,
-      programName: this.form.programName
+      programName: this.form.programName,
+      preferredDepartment: this.form.preferredDepartment
     };
 
-    this.applicationService.updateMyApplication(payload).subscribe({
+    const hasExistingApp = !!this.application() && !!this.application()?.applicationNumber;
+
+    const save$ = hasExistingApp
+      ? this.applicationService.updateMyApplication(payload)
+      : this.applicationService.createApplication(payload);
+
+    save$.subscribe({
       next: (res) => {
         this.isSaving.set(false);
         this.application.set(res.application);
