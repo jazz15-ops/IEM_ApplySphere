@@ -40,6 +40,20 @@ const documentMetaSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const statusHistorySchema = new mongoose.Schema(
+  {
+    status: {
+      type: String,
+      enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SELECTED', 'REJECTED'],
+      required: true
+    },
+    changedAt: { type: Date, default: Date.now },
+    changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    changedByRole: { type: String, enum: ['applicant', 'admin'], required: true }
+  },
+  { _id: false }
+);
+
 const applicationSchema = new mongoose.Schema(
   {
     applicant: {
@@ -56,10 +70,17 @@ const applicationSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['DRAFT'],
+      enum: ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SELECTED', 'REJECTED'],
       default: 'DRAFT',
       required: true
     },
+    statusHistory: {
+      type: [statusHistorySchema],
+      default: []
+    },
+    submittedAt: { type: Date, default: null },
+    reviewStartedAt: { type: Date, default: null },
+    decisionAt: { type: Date, default: null },
     // Personal Details
     firstName: { type: String, trim: true, default: '' },
     middleName: { type: String, trim: true, default: '' },

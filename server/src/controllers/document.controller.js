@@ -35,6 +35,14 @@ const uploadDocument = async (req, res) => {
       return res.status(404).json({ message: 'No admission application found. Create an application draft first.' });
     }
 
+    // SERVER-SIDE LOCK: Submitted applications cannot modify documents
+    if (application.status !== 'DRAFT') {
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ message: 'Submitted applications can no longer accept document uploads.' });
+    }
+
     const oldDocument = application.documents ? application.documents[documentType] : null;
 
     // Create relative path reference
@@ -94,6 +102,11 @@ const deleteDocument = async (req, res) => {
     const application = await Application.findOne({ applicant: req.user._id });
     if (!application) {
       return res.status(404).json({ message: 'No application found' });
+    }
+
+    // SERVER-SIDE LOCK: Submitted applications cannot delete documents
+    if (application.status !== 'DRAFT') {
+      return res.status(400).json({ message: 'Submitted applications can no longer delete documents.' });
     }
 
     const docMeta = application.documents ? application.documents[documentType] : null;

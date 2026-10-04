@@ -3,22 +3,16 @@ const router = express.Router();
 const applicationController = require('../controllers/application.controller');
 const documentController = require('../controllers/document.controller');
 const readinessController = require('../controllers/readiness.controller');
+const adminStatusController = require('../controllers/adminStatus.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const { allowRoles } = require('../middleware/role.middleware');
 const { upload } = require('../middleware/upload.middleware');
 const multer = require('multer');
 
-// All routes require authentication and applicant role
+// All routes in this router require authentication
 router.use(authMiddleware);
-router.use(allowRoles('applicant'));
 
-// Application Draft & Readiness Routes
-router.post('/', applicationController.createApplication);
-router.get('/me', applicationController.getMyApplication);
-router.patch('/me', applicationController.updateMyApplication);
-router.get('/me/readiness', readinessController.getMyApplicationReadiness);
-
-// Document Management Routes
+// Multer upload error handler middleware
 const handleMulterUpload = (req, res, next) => {
   const singleUpload = upload.single('file');
   singleUpload(req, res, (err) => {
@@ -36,9 +30,21 @@ const handleMulterUpload = (req, res, next) => {
   });
 };
 
-router.get('/me/documents', documentController.getDocumentMetadata);
-router.get('/me/documents/:documentType/file', documentController.streamDocumentFile);
-router.post('/me/documents/:documentType', handleMulterUpload, documentController.uploadDocument);
-router.delete('/me/documents/:documentType', documentController.deleteDocument);
+// --- APPLICANT-ONLY ROUTES ---
+router.post('/', allowRoles('applicant'), applicationController.createApplication);
+router.get('/me', allowRoles('applicant'), applicationController.getMyApplication);
+router.patch('/me', allowRoles('applicant'), applicationController.updateMyApplication);
+router.get('/me/readiness', allowRoles('applicant'), readinessController.getMyApplicationReadiness);
+router.post('/me/submit', allowRoles('applicant'), applicationController.submitMyApplication);
+router.get('/me/status', allowRoles('applicant'), applicationController.getMyApplicationStatus);
+
+// Applicant Document Routes
+router.get('/me/documents', allowRoles('applicant'), documentController.getDocumentMetadata);
+router.get('/me/documents/:documentType/file', allowRoles('applicant'), documentController.streamDocumentFile);
+router.post('/me/documents/:documentType', allowRoles('applicant'), handleMulterUpload, documentController.uploadDocument);
+router.delete('/me/documents/:documentType', allowRoles('applicant'), documentController.deleteDocument);
+
+// --- ADMIN-ONLY ROUTES ---
+router.patch('/:applicationId/status', allowRoles('admin'), adminStatusController.updateApplicationStatusByAdmin);
 
 module.exports = router;

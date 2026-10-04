@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
-import { ApplicationService, ReadinessResponse } from '../../core/services/application.service';
+import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from '../../core/services/application.service';
 
 @Component({
   selector: 'app-applicant-dashboard',
@@ -19,8 +19,50 @@ import { ApplicationService, ReadinessResponse } from '../../core/services/appli
       </header>
 
       <main class="content">
+        <!-- Status Timeline Banner -->
+        <div class="card status-card" *ngIf="statusInfo()">
+          <div class="status-header">
+            <div>
+              <span class="sub-title">Application Status</span>
+              <h3 class="app-num">{{ statusInfo()?.applicationNumber || 'No Application Created' }}</h3>
+            </div>
+            <div [class]="getStatusBadgeClass(statusInfo()?.status)">
+              {{ formatStatusLabel(statusInfo()?.status) }}
+            </div>
+          </div>
+
+          <!-- Status Step Timeline -->
+          <div class="timeline-container" *ngIf="statusInfo()?.status">
+            <div class="timeline-step" [ngClass]="{'active': isStepActive('DRAFT'), 'completed': isStepCompleted('DRAFT')}">
+              <div class="step-circle">1</div>
+              <div class="step-label">Draft</div>
+            </div>
+            <div class="timeline-line" [ngClass]="{'active': isStepCompleted('DRAFT')}"></div>
+
+            <div class="timeline-step" [ngClass]="{'active': isStepActive('SUBMITTED'), 'completed': isStepCompleted('SUBMITTED')}">
+              <div class="step-circle">2</div>
+              <div class="step-label">Submitted</div>
+              <div class="step-date" *ngIf="statusInfo()?.submittedAt">{{ statusInfo()?.submittedAt | date:'shortDate' }}</div>
+            </div>
+            <div class="timeline-line" [ngClass]="{'active': isStepCompleted('SUBMITTED')}"></div>
+
+            <div class="timeline-step" [ngClass]="{'active': isStepActive('UNDER_REVIEW'), 'completed': isStepCompleted('UNDER_REVIEW')}">
+              <div class="step-circle">3</div>
+              <div class="step-label">Under Review</div>
+              <div class="step-date" *ngIf="statusInfo()?.reviewStartedAt">{{ statusInfo()?.reviewStartedAt | date:'shortDate' }}</div>
+            </div>
+            <div class="timeline-line" [ngClass]="{'active': isStepCompleted('UNDER_REVIEW')}"></div>
+
+            <div class="timeline-step" [ngClass]="{'active-selected': statusInfo()?.status === 'SELECTED', 'active-rejected': statusInfo()?.status === 'REJECTED'}">
+              <div class="step-circle">{{ statusInfo()?.status === 'REJECTED' ? '✕' : (statusInfo()?.status === 'SELECTED' ? '✓' : '4') }}</div>
+              <div class="step-label">Decision</div>
+              <div class="step-date" *ngIf="statusInfo()?.decisionAt">{{ statusInfo()?.decisionAt | date:'shortDate' }}</div>
+            </div>
+          </div>
+        </div>
+
         <!-- Readiness Summary Card -->
-        <div class="card readiness-card" *ngIf="readiness(); else loadingReadiness">
+        <div class="card readiness-card" style="margin-top: 1.5rem;" *ngIf="readiness(); else loadingReadiness">
           <div class="readiness-header">
             <div>
               <span class="readiness-title">Explainable Application Readiness</span>
@@ -79,7 +121,7 @@ import { ApplicationService, ReadinessResponse } from '../../core/services/appli
         </div>
 
         <ng-template #loadingReadiness>
-          <div class="card">
+          <div class="card" style="margin-top: 1.5rem;">
             <p style="color: #64748b;">Loading application readiness evaluation...</p>
           </div>
         </ng-template>
@@ -87,9 +129,12 @@ import { ApplicationService, ReadinessResponse } from '../../core/services/appli
         <!-- Main Form Navigation Card -->
         <div class="card" style="margin-top: 1.5rem;">
           <h3>Admission Application Form</h3>
-          <p>Complete your personal details, academic history, program choices, and document uploads.</p>
+          <p *ngIf="statusInfo()?.status === 'DRAFT'">Complete your personal details, academic history, program choices, and document uploads.</p>
+          <p *ngIf="statusInfo()?.status !== 'DRAFT'" style="color: #0369a1; font-weight: 600;">Application submitted. Form and documents are locked in read-only mode.</p>
           <div class="actions">
-            <a routerLink="/applicant/application" class="btn-app">Open Admission Application Form →</a>
+            <a routerLink="/applicant/application" class="btn-app">
+              {{ statusInfo()?.status === 'DRAFT' ? 'Open Admission Application Form →' : 'View Submitted Application →' }}
+            </a>
           </div>
           <div class="meta-info">
             <p><strong>Email:</strong> {{ currentUser()?.email }}</p>
@@ -115,6 +160,35 @@ import { ApplicationService, ReadinessResponse } from '../../core/services/appli
     .meta-info { margin-top: 1.5rem; border-top: 1px solid #f1f5f9; padding-top: 1rem; }
     .meta-info p { margin: 0.3rem 0; color: #475569; font-size: 0.9rem; }
     
+    .status-card { border-left: 4px solid #3b82f6; }
+    .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .sub-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #64748b; }
+    .app-num { margin: 0.2rem 0 0 0; font-size: 1.4rem; color: #0f172a; }
+
+    .badge-status { padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+    .badge-draft { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .badge-submitted { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+    .badge-review { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+    .badge-selected { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+    .timeline-container { display: flex; align-items: center; justify-content: space-between; margin-top: 1.25rem; padding: 0.5rem 0; }
+    .timeline-step { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
+    .step-circle { width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
+    .step-label { font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 0.4rem; }
+    .step-date { font-size: 0.7rem; color: #94a3b8; margin-top: 0.1rem; }
+    .timeline-line { flex: 1; height: 3px; background: #e2e8f0; margin: 0 0.5rem; margin-top: -1.2rem; }
+
+    .timeline-step.active .step-circle { background: #2563eb; color: #fff; }
+    .timeline-step.active .step-label { color: #2563eb; font-weight: 700; }
+    .timeline-step.completed .step-circle { background: #10b981; color: #fff; }
+    .timeline-line.active { background: #10b981; }
+
+    .timeline-step.active-selected .step-circle { background: #16a34a; color: #fff; }
+    .timeline-step.active-selected .step-label { color: #16a34a; font-weight: 700; }
+    .timeline-step.active-rejected .step-circle { background: #dc2626; color: #fff; }
+    .timeline-step.active-rejected .step-label { color: #dc2626; font-weight: 700; }
+
     .readiness-header { display: flex; justify-content: space-between; align-items: flex-start; }
     .readiness-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #64748b; }
     .score-display { margin: 0.25rem 0 0 0; font-size: 2.25rem; font-weight: 800; color: #0f172a; }
@@ -144,9 +218,18 @@ export class ApplicantDashboardComponent implements OnInit {
 
   currentUser = this.authService.currentUserSignal;
   readiness = signal<ReadinessResponse | null>(null);
+  statusInfo = signal<ApplicationStatusResponse | null>(null);
 
   ngOnInit(): void {
+    this.fetchStatus();
     this.fetchReadiness();
+  }
+
+  fetchStatus(): void {
+    this.applicationService.getApplicationStatus().subscribe({
+      next: (data) => this.statusInfo.set(data),
+      error: (err) => console.error('Failed to load status info:', err)
+    });
   }
 
   fetchReadiness(): void {
@@ -154,6 +237,44 @@ export class ApplicantDashboardComponent implements OnInit {
       next: (data) => this.readiness.set(data),
       error: (err) => console.error('Failed to load readiness score:', err)
     });
+  }
+
+  formatStatusLabel(status?: string | null): string {
+    if (!status) return 'NOT CREATED';
+    switch (status) {
+      case 'DRAFT': return 'DRAFT';
+      case 'SUBMITTED': return 'SUBMITTED';
+      case 'UNDER_REVIEW': return 'UNDER REVIEW';
+      case 'SELECTED': return 'SELECTED ✓';
+      case 'REJECTED': return 'REJECTED ✕';
+      default: return status;
+    }
+  }
+
+  getStatusBadgeClass(status?: string | null): string {
+    const base = 'badge-status ';
+    if (!status) return base + 'badge-draft';
+    switch (status) {
+      case 'DRAFT': return base + 'badge-draft';
+      case 'SUBMITTED': return base + 'badge-submitted';
+      case 'UNDER_REVIEW': return base + 'badge-review';
+      case 'SELECTED': return base + 'badge-selected';
+      case 'REJECTED': return base + 'badge-rejected';
+      default: return base + 'badge-draft';
+    }
+  }
+
+  isStepCompleted(step: string): boolean {
+    const current = this.statusInfo()?.status;
+    if (!current) return false;
+    const order = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'SELECTED', 'REJECTED'];
+    const currIdx = order.indexOf(current);
+    const stepIdx = order.indexOf(step);
+    return currIdx > stepIdx;
+  }
+
+  isStepActive(step: string): boolean {
+    return this.statusInfo()?.status === step;
   }
 
   logout(): void {

@@ -1,4 +1,6 @@
 const Application = require('../models/Application');
+const { calculateReadiness } = require('../services/readiness.service');
+const { executeTransition } = require('../services/statusWorkflow.service');
 
 // Helper to generate a collision-safe readable application number with bounded retries
 const generateUniqueApplicationNumber = async (maxRetries = 5) => {
@@ -40,10 +42,20 @@ const createApplication = async (req, res) => {
       class10, class12, programLevel, programName, preferredDepartment
     } = req.body;
 
+    const now = new Date();
+
     const newApplication = new Application({
       applicant: applicantId,
       applicationNumber,
       status: 'DRAFT',
+      statusHistory: [
+        {
+          status: 'DRAFT',
+          changedAt: now,
+          changedBy: applicantId,
+          changedByRole: 'applicant'
+        }
+      ],
       firstName: firstName || req.user.name || '',
       middleName: middleName || '',
       lastName: lastName || '',
@@ -114,6 +126,11 @@ const updateMyApplication = async (req, res) => {
       return res.status(404).json({ message: 'No application found to update' });
     }
 
+    // SERVER-SIDE LOCK: Post-submission editing forbidden
+    if (application.status !== 'DRAFT') {
+      return res.status(400).json({ message: 'Submitted applications can no longer be edited.' });
+    }
+
     // Strip protected / immutable fields from request payload
     const updateData = { ...req.body };
     delete updateData.applicant;
@@ -129,6 +146,10 @@ const updateMyApplication = async (req, res) => {
     delete updateData.breakdown;
     delete updateData.missingItems;
     delete updateData.completedItems;
+    delete updateData.statusHistory;
+    delete updateData.submittedAt;
+    delete updateData.reviewStartedAt;
+    delete updateData.decisionAt;
 
     // Apply updates
     Object.keys(updateData).forEach((key) => {
@@ -154,8 +175,76 @@ const updateMyApplication = async (req, res) => {
   }
 };
 
+// POST /api/applications/me/submit - Submit applicant's application
+const submitMyApplication = async (req, res) => {
+  try {
+    const application = await Application.findOne({ applicant: req.user._id });
+    if (!application) {
+      return res.status(404).json({ message: 'No application found to submit' });
+    }
+
+    if (application.status !== 'DRAFT') {
+      return res.status(400).json({ message: 'Application has already been submitted.' });
+    }
+
+    // SERVER-SIDE READINESS EVALUATION
+    const readiness = calculateReadiness(application);
+
+    if (!readiness.canSubmit || readiness.readinessScore < 100 || readiness.missingItems.length > 0) {
+      return res.status(400).json({
+        message: 'Application is incomplete and cannot be submitted.',
+        readinessScore: readiness.readinessScore,
+        canSubmit: false,
+        missingItems: readiness.missingItems
+      });
+    }
+
+    // Transition status DRAFT -> SUBMITTED
+    await executeTransition(application, 'SUBMITTED', req.user);
+
+    return res.status(200).json({
+      message: 'Application submitted successfully',
+      application
+    });
+  } catch (error) {
+    console.error('Submit application error:', error);
+    return res.status(400).json({ message: error.message || 'Error submitting application' });
+  }
+};
+
+// GET /api/applications/me/status - Get current applicant's status history
+const getMyApplicationStatus = async (req, res) => {
+  try {
+    const application = await Application.findOne({ applicant: req.user._id });
+    if (!application) {
+      return res.status(200).json({
+        applicationNumber: null,
+        status: null,
+        submittedAt: null,
+        reviewStartedAt: null,
+        decisionAt: null,
+        statusHistory: []
+      });
+    }
+
+    return res.status(200).json({
+      applicationNumber: application.applicationNumber,
+      status: application.status,
+      submittedAt: application.submittedAt,
+      reviewStartedAt: application.reviewStartedAt,
+      decisionAt: application.decisionAt,
+      statusHistory: application.statusHistory
+    });
+  } catch (error) {
+    console.error('Get application status error:', error);
+    return res.status(500).json({ message: 'Error retrieving application status' });
+  }
+};
+
 module.exports = {
   createApplication,
   getMyApplication,
-  updateMyApplication
+  updateMyApplication,
+  submitMyApplication,
+  getMyApplicationStatus
 };

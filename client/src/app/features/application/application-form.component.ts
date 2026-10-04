@@ -25,9 +25,19 @@ interface DocSlotConfig {
       </header>
 
       <main class="content">
+        <!-- Status Banner -->
         <div class="status-banner" *ngIf="application()?.applicationNumber">
-          <span>Application No: <strong>{{ application()?.applicationNumber }}</strong></span>
-          <span class="badge-draft">STATUS: {{ application()?.status }}</span>
+          <div>
+            <span>Application No: <strong>{{ application()?.applicationNumber }}</strong></span>
+          </div>
+          <div [class]="getStatusBadgeClass(application()?.status)">
+            STATUS: {{ formatStatusLabel(application()?.status) }}
+          </div>
+        </div>
+
+        <!-- Lock Warning Notice if Application Submitted -->
+        <div class="alert alert-info" *ngIf="isLocked()">
+          🔒 <strong>Application Submitted:</strong> Your application has been submitted and is currently locked. Fields and documents cannot be modified.
         </div>
 
         <!-- Live Application Readiness Panel -->
@@ -74,9 +84,20 @@ interface DocSlotConfig {
             </div>
           </div>
 
-          <div class="missing-summary" *ngIf="(readiness()?.missingItems?.length || 0) > 0">
-            <span class="missing-badge">⚠ {{ readiness()?.missingItems?.length }} Missing Item(s)</span>
-            <span class="missing-hint">Complete required fields below to reach 100% readiness score.</span>
+          <!-- Submission Action Bar -->
+          <div class="submit-action-bar" *ngIf="!isLocked()">
+            <div *ngIf="readiness()?.canSubmit; else incompleteNotice" class="submit-ready-container">
+              <span class="ready-text">✓ All requirements complete! You can now submit your application.</span>
+              <button (click)="confirmSubmit()" [disabled]="isSubmitting()" class="btn btn-submit">
+                {{ isSubmitting() ? 'Submitting Application...' : '🚀 Submit Final Application' }}
+              </button>
+            </div>
+            <ng-template #incompleteNotice>
+              <div class="missing-summary" *ngIf="(readiness()?.missingItems?.length || 0) > 0">
+                <span class="missing-badge">⚠ {{ readiness()?.missingItems?.length }} Missing Item(s)</span>
+                <span class="missing-hint">Complete required fields below to enable submission.</span>
+              </div>
+            </ng-template>
           </div>
         </div>
 
@@ -89,28 +110,28 @@ interface DocSlotConfig {
 
         <form (ngSubmit)="saveDraft()" #appForm="ngForm">
           <!-- Section 1: Personal Details -->
-          <fieldset class="section-card">
+          <fieldset class="section-card" [disabled]="isLocked()">
             <legend>1. Personal Details</legend>
             <div class="form-grid">
               <div class="form-group">
                 <label>First Name *</label>
-                <input type="text" [(ngModel)]="form.firstName" name="firstName" class="form-control" />
+                <input type="text" [(ngModel)]="form.firstName" name="firstName" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Middle Name (Optional)</label>
-                <input type="text" [(ngModel)]="form.middleName" name="middleName" class="form-control" />
+                <input type="text" [(ngModel)]="form.middleName" name="middleName" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Last Name *</label>
-                <input type="text" [(ngModel)]="form.lastName" name="lastName" class="form-control" />
+                <input type="text" [(ngModel)]="form.lastName" name="lastName" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Date of Birth *</label>
-                <input type="date" [(ngModel)]="form.dateOfBirth" name="dateOfBirth" class="form-control" />
+                <input type="date" [(ngModel)]="form.dateOfBirth" name="dateOfBirth" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Gender *</label>
-                <select [(ngModel)]="form.gender" name="gender" class="form-control">
+                <select [(ngModel)]="form.gender" name="gender" class="form-control" [disabled]="isLocked()">
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
@@ -119,70 +140,70 @@ interface DocSlotConfig {
               </div>
               <div class="form-group">
                 <label>Mobile Phone *</label>
-                <input type="tel" [(ngModel)]="form.phone" name="phone" class="form-control" />
+                <input type="tel" [(ngModel)]="form.phone" name="phone" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Email Address *</label>
-                <input type="email" [(ngModel)]="form.email" name="email" class="form-control" />
+                <input type="email" [(ngModel)]="form.email" name="email" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Nationality *</label>
-                <input type="text" [(ngModel)]="form.nationality" name="nationality" class="form-control" placeholder="Indian" />
+                <input type="text" [(ngModel)]="form.nationality" name="nationality" class="form-control" placeholder="Indian" [readonly]="isLocked()" />
               </div>
             </div>
           </fieldset>
 
           <!-- Section 2: Address -->
-          <fieldset class="section-card">
+          <fieldset class="section-card" [disabled]="isLocked()">
             <legend>2. Address Details</legend>
             <div class="form-grid">
               <div class="form-group full-width">
                 <label>Address Line 1 *</label>
-                <input type="text" [(ngModel)]="form.addressLine1" name="addressLine1" class="form-control" />
+                <input type="text" [(ngModel)]="form.addressLine1" name="addressLine1" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group full-width">
                 <label>Address Line 2 (Optional)</label>
-                <input type="text" [(ngModel)]="form.addressLine2" name="addressLine2" class="form-control" />
+                <input type="text" [(ngModel)]="form.addressLine2" name="addressLine2" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>City *</label>
-                <input type="text" [(ngModel)]="form.city" name="city" class="form-control" />
+                <input type="text" [(ngModel)]="form.city" name="city" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>State *</label>
-                <input type="text" [(ngModel)]="form.state" name="state" class="form-control" />
+                <input type="text" [(ngModel)]="form.state" name="state" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Postal Code *</label>
-                <input type="text" [(ngModel)]="form.postalCode" name="postalCode" class="form-control" />
+                <input type="text" [(ngModel)]="form.postalCode" name="postalCode" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Country *</label>
-                <input type="text" [(ngModel)]="form.country" name="country" class="form-control" placeholder="India" />
+                <input type="text" [(ngModel)]="form.country" name="country" class="form-control" placeholder="India" [readonly]="isLocked()" />
               </div>
             </div>
           </fieldset>
 
           <!-- Section 3: Academic Details -->
-          <fieldset class="section-card">
+          <fieldset class="section-card" [disabled]="isLocked()">
             <legend>3. Academic History</legend>
             <h4 class="sub-heading">Class 10 (Secondary)</h4>
             <div class="form-grid">
               <div class="form-group">
                 <label>Board *</label>
-                <input type="text" [(ngModel)]="form.class10!.board" name="c10_board" class="form-control" placeholder="CBSE / ICSE / State" />
+                <input type="text" [(ngModel)]="form.class10!.board" name="c10_board" class="form-control" placeholder="CBSE / ICSE / State" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Institution Name *</label>
-                <input type="text" [(ngModel)]="form.class10!.institutionName" name="c10_school" class="form-control" />
+                <input type="text" [(ngModel)]="form.class10!.institutionName" name="c10_school" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Passing Year *</label>
-                <input type="number" [(ngModel)]="form.class10!.passingYear" name="c10_year" class="form-control" placeholder="2022" />
+                <input type="number" [(ngModel)]="form.class10!.passingYear" name="c10_year" class="form-control" placeholder="2022" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Percentage (%) *</label>
-                <input type="number" [(ngModel)]="form.class10!.percentage" name="c10_pct" class="form-control" placeholder="85.5" step="0.1" />
+                <input type="number" [(ngModel)]="form.class10!.percentage" name="c10_pct" class="form-control" placeholder="85.5" step="0.1" [readonly]="isLocked()" />
               </div>
             </div>
 
@@ -190,37 +211,37 @@ interface DocSlotConfig {
             <div class="form-grid">
               <div class="form-group">
                 <label>Board *</label>
-                <input type="text" [(ngModel)]="form.class12!.board" name="c12_board" class="form-control" placeholder="CBSE / ISC / State" />
+                <input type="text" [(ngModel)]="form.class12!.board" name="c12_board" class="form-control" placeholder="CBSE / ISC / State" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Institution Name *</label>
-                <input type="text" [(ngModel)]="form.class12!.institutionName" name="c12_school" class="form-control" />
+                <input type="text" [(ngModel)]="form.class12!.institutionName" name="c12_school" class="form-control" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Passing Year *</label>
-                <input type="number" [(ngModel)]="form.class12!.passingYear" name="c12_year" class="form-control" placeholder="2024" />
+                <input type="number" [(ngModel)]="form.class12!.passingYear" name="c12_year" class="form-control" placeholder="2024" [readonly]="isLocked()" />
               </div>
               <div class="form-group">
                 <label>Percentage (%) *</label>
-                <input type="number" [(ngModel)]="form.class12!.percentage" name="c12_pct" class="form-control" placeholder="88.0" step="0.1" />
+                <input type="number" [(ngModel)]="form.class12!.percentage" name="c12_pct" class="form-control" placeholder="88.0" step="0.1" [readonly]="isLocked()" />
               </div>
             </div>
           </fieldset>
 
           <!-- Section 4: Program Selection -->
-          <fieldset class="section-card">
+          <fieldset class="section-card" [disabled]="isLocked()">
             <legend>4. Program Selection</legend>
             <div class="form-grid">
               <div class="form-group">
                 <label>Program Level *</label>
-                <select [(ngModel)]="form.programLevel" name="programLevel" class="form-control">
+                <select [(ngModel)]="form.programLevel" name="programLevel" class="form-control" [disabled]="isLocked()">
                   <option value="Undergraduate">Undergraduate (UG)</option>
                   <option value="Postgraduate">Postgraduate (PG)</option>
                 </select>
               </div>
               <div class="form-group">
                 <label>Program Name *</label>
-                <select [(ngModel)]="form.programName" name="programName" class="form-control">
+                <select [(ngModel)]="form.programName" name="programName" class="form-control" [disabled]="isLocked()">
                   <option value="B.Tech Computer Science">B.Tech Computer Science & Engineering</option>
                   <option value="B.Tech Information Technology">B.Tech Information Technology</option>
                   <option value="B.Tech Electronics & Comm">B.Tech Electronics & Comm Engineering</option>
@@ -236,7 +257,7 @@ interface DocSlotConfig {
             </div>
           </fieldset>
 
-          <div class="form-actions">
+          <div class="form-actions" *ngIf="!isLocked()">
             <button type="submit" [disabled]="isSaving()" class="btn btn-save">
               {{ isSaving() ? 'Saving Draft...' : 'Save Draft Application' }}
             </button>
@@ -246,7 +267,8 @@ interface DocSlotConfig {
         <!-- Section 5: Document Uploads -->
         <fieldset class="section-card mt-2" *ngIf="application()">
           <legend>5. Required Document Uploads</legend>
-          <p class="section-hint">Upload required certificates & ID proof (PDF, JPG, PNG up to 5 MB). Passport photo must be an image file.</p>
+          <p class="section-hint" *ngIf="!isLocked()">Upload required certificates & ID proof (PDF, JPG, PNG up to 5 MB). Passport photo must be an image file.</p>
+          <p class="section-hint" *ngIf="isLocked()" style="color: #0369a1;">Uploaded documents are locked and available for viewing/download.</p>
 
           <div class="doc-grid">
             <div class="doc-card" *ngFor="let slot of docSlots">
@@ -264,11 +286,11 @@ interface DocSlotConfig {
                   <button (click)="viewDocument(slot.key)" [disabled]="isDownloading(slot.key)" class="btn-sm btn-view">
                     {{ isDownloading(slot.key) ? 'Opening...' : 'View / Download' }}
                   </button>
-                  <button (click)="removeDocument(slot.key)" class="btn-sm btn-delete">Remove</button>
+                  <button *ngIf="!isLocked()" (click)="removeDocument(slot.key)" class="btn-sm btn-delete">Remove</button>
                 </div>
               </div>
 
-              <div class="upload-controls" *ngIf="!getDocMeta(slot.key)">
+              <div class="upload-controls" *ngIf="!getDocMeta(slot.key) && !isLocked()">
                 <input
                   type="file"
                   [accept]="slot.accept"
@@ -298,7 +320,13 @@ interface DocSlotConfig {
     .btn-back:hover { color: #fff; }
     .content { padding: 2rem; max-width: 900px; margin: 0 auto; }
     .status-banner { display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; color: #0369a1; }
-    .badge-draft { background: #fef08a; color: #854d0e; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; }
+    
+    .badge-status { padding: 0.25rem 0.6rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; }
+    .badge-draft { background: #fef08a; color: #854d0e; }
+    .badge-submitted { background: #bae6fd; color: #0369a1; }
+    .badge-review { background: #e9d5ff; color: #6b21a8; }
+    .badge-selected { background: #bbf7d0; color: #15803d; }
+    .badge-rejected { background: #fecaca; color: #991b1b; }
     
     .readiness-card { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
     .readiness-header { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -315,6 +343,13 @@ interface DocSlotConfig {
     .cat-pill { background: #f1f5f9; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.8rem; display: flex; flex-direction: column; }
     .cat-name { color: #64748b; font-weight: 500; }
     .cat-score { color: #0f172a; font-weight: 700; font-size: 0.9rem; margin-top: 0.1rem; }
+
+    .submit-action-bar { margin-top: 1.25rem; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
+    .submit-ready-container { display: flex; justify-content: space-between; align-items: center; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.75rem 1rem; border-radius: 6px; }
+    .ready-text { font-size: 0.9rem; font-weight: 600; color: #166534; }
+    .btn-submit { background: #15803d; color: #fff; border: none; padding: 0.65rem 1.25rem; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 0.95rem; }
+    .btn-submit:hover { background: #166534; }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .missing-summary { margin-top: 0.75rem; border-top: 1px dashed #e2e8f0; padding-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
     .missing-badge { background: #fef3c7; color: #92400e; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; }
@@ -339,6 +374,7 @@ interface DocSlotConfig {
     .alert { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem; }
     .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
     .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .alert-info { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; }
 
     /* Documents Grid */
     .doc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 1.25rem; margin-top: 1rem; }
@@ -367,6 +403,7 @@ export class ApplicationFormComponent implements OnInit {
   documents = signal<DocumentSlots>({});
   readiness = signal<ReadinessResponse | null>(null);
   isSaving = signal(false);
+  isSubmitting = signal(false);
   successMessage = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
 
@@ -397,6 +434,36 @@ export class ApplicationFormComponent implements OnInit {
     this.fetchReadiness();
   }
 
+  isLocked(): boolean {
+    const status = this.application()?.status;
+    return Boolean(status && status !== 'DRAFT');
+  }
+
+  formatStatusLabel(status?: string | null): string {
+    if (!status) return 'DRAFT';
+    switch (status) {
+      case 'DRAFT': return 'DRAFT';
+      case 'SUBMITTED': return 'SUBMITTED';
+      case 'UNDER_REVIEW': return 'UNDER REVIEW';
+      case 'SELECTED': return 'SELECTED ✓';
+      case 'REJECTED': return 'REJECTED ✕';
+      default: return status;
+    }
+  }
+
+  getStatusBadgeClass(status?: string | null): string {
+    const base = 'badge-status ';
+    if (!status) return base + 'badge-draft';
+    switch (status) {
+      case 'DRAFT': return base + 'badge-draft';
+      case 'SUBMITTED': return base + 'badge-submitted';
+      case 'UNDER_REVIEW': return base + 'badge-review';
+      case 'SELECTED': return base + 'badge-selected';
+      case 'REJECTED': return base + 'badge-rejected';
+      default: return base + 'badge-draft';
+    }
+  }
+
   fetchReadiness(): void {
     this.appService.getReadiness().subscribe({
       next: (res) => this.readiness.set(res),
@@ -419,7 +486,40 @@ export class ApplicationFormComponent implements OnInit {
     });
   }
 
+  confirmSubmit(): void {
+    if (this.isLocked()) return;
+
+    const confirmed = window.confirm(
+      'Are you sure you want to submit your admission application?\n\nOnce submitted, your application and uploaded documents will be locked and cannot be edited.'
+    );
+
+    if (confirmed) {
+      this.submitApplication();
+    }
+  }
+
+  submitApplication(): void {
+    this.isSubmitting.set(true);
+    this.successMessage.set(null);
+    this.errorMessage.set(null);
+
+    this.appService.submitApplication().subscribe({
+      next: (res) => {
+        this.isSubmitting.set(false);
+        this.application.set(res.application);
+        this.successMessage.set('Application submitted successfully! Your application is now locked for review.');
+        this.fetchReadiness();
+      },
+      error: (err) => {
+        this.isSubmitting.set(false);
+        this.errorMessage.set(err.error?.message || 'Failed to submit application. Please verify all requirements.');
+      }
+    });
+  }
+
   saveDraft(): void {
+    if (this.isLocked()) return;
+
     this.isSaving.set(true);
     this.successMessage.set(null);
     this.errorMessage.set(null);
@@ -469,6 +569,8 @@ export class ApplicationFormComponent implements OnInit {
   }
 
   uploadFile(slotKey: keyof DocumentSlots, inputRef: HTMLInputElement): void {
+    if (this.isLocked()) return;
+
     const file = this.selectedFiles[slotKey];
     if (!file) return;
 
@@ -493,6 +595,8 @@ export class ApplicationFormComponent implements OnInit {
   }
 
   removeDocument(slotKey: keyof DocumentSlots): void {
+    if (this.isLocked()) return;
+
     this.successMessage.set(null);
     this.errorMessage.set(null);
 

@@ -25,11 +25,22 @@ export interface DocumentSlots {
   passportPhoto?: DocumentMetadata | null;
 }
 
+export interface StatusHistoryEntry {
+  status: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'SELECTED' | 'REJECTED';
+  changedAt: string;
+  changedBy?: string;
+  changedByRole: 'applicant' | 'admin';
+}
+
 export interface Application {
   _id?: string;
   applicant?: string;
   applicationNumber: string;
-  status: 'DRAFT';
+  status: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'SELECTED' | 'REJECTED';
+  statusHistory?: StatusHistoryEntry[];
+  submittedAt?: string | null;
+  reviewStartedAt?: string | null;
+  decisionAt?: string | null;
   firstName?: string;
   middleName?: string;
   lastName?: string;
@@ -84,6 +95,15 @@ export interface ReadinessResponse {
   completedItems: ReadinessItem[];
 }
 
+export interface ApplicationStatusResponse {
+  applicationNumber: string | null;
+  status: 'DRAFT' | 'SUBMITTED' | 'UNDER_REVIEW' | 'SELECTED' | 'REJECTED' | null;
+  submittedAt: string | null;
+  reviewStartedAt: string | null;
+  decisionAt: string | null;
+  statusHistory: StatusHistoryEntry[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -105,6 +125,14 @@ export class ApplicationService {
 
   getReadiness(): Observable<ReadinessResponse> {
     return this.http.get<ReadinessResponse>(`${this.API_URL}/me/readiness`);
+  }
+
+  submitApplication(): Observable<{ message: string; application: Application }> {
+    return this.http.post<{ message: string; application: Application }>(`${this.API_URL}/me/submit`, {});
+  }
+
+  getApplicationStatus(): Observable<ApplicationStatusResponse> {
+    return this.http.get<ApplicationStatusResponse>(`${this.API_URL}/me/status`);
   }
 
   uploadDocument(documentType: string, file: File): Observable<{ message: string; documentType: string; metadata: DocumentMetadata }> {
