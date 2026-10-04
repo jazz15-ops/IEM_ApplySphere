@@ -1,0 +1,19 @@
+{
+  "name": "iem-applysphere-server",
+  "version": "0.1.0",
+  "description": "IEM ApplySphere - Express.js backend API server",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "mongoose": "^9.10.4"
+  }
+}

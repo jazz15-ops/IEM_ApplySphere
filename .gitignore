@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Angular build output
+client/dist/
+client/.angular/
+
+# Environment files
+server/.env
+
+# Uploaded runtime files (keep directory via .gitkeep)
+uploads/*
+!uploads/.gitkeep
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc
+.env.local
+.env.*.local
