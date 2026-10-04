@@ -9,207 +9,467 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
-    <div class="dashboard-layout">
+    <div class="dashboard-layout fade-in">
       <header class="navbar">
-        <div class="brand">IEM ApplySphere | Applicant Portal</div>
-        <div class="user-info">
-          <span>Welcome, <strong>{{ currentUser()?.name }}</strong> (Applicant)</span>
-          <button (click)="logout()" class="btn-logout">Logout</button>
+        <div class="brand-container">
+          <span class="brand-logo-mark">IEM</span>
+          <div class="brand-text">
+            <span class="brand-title">ApplySphere</span>
+            <span class="brand-subtitle">Smart Candidate Admission Portal</span>
+          </div>
+        </div>
+        <div class="user-nav-box">
+          <div class="user-badge-info">
+            <span class="user-name">{{ currentUser()?.name }}</span>
+            <span class="user-role-pill">Applicant Candidate</span>
+          </div>
+          <button (click)="logout()" class="btn-logout">Sign Out</button>
         </div>
       </header>
 
-      <main class="content">
-        <!-- Status Timeline Banner -->
-        <div class="card status-card" *ngIf="statusInfo()">
-          <div class="status-header">
+      <main class="page-container">
+        <!-- Hero Welcome Header -->
+        <div class="welcome-hero">
+          <div>
+            <h1>Welcome back, {{ currentUser()?.name }}</h1>
+            <p>Track your admission readiness, update application details, and inspect evaluation progress.</p>
+          </div>
+        </div>
+
+        <!-- 1. Application Status Snapshot Card & Journey Timeline -->
+        <div class="card-elevated status-card" *ngIf="statusInfo()">
+          <div class="status-top-bar">
             <div>
-              <span class="sub-title">Application Status</span>
-              <h3 class="app-num">{{ statusInfo()?.applicationNumber || 'No Application Created' }}</h3>
+              <span class="card-kicker">Application Tracking Identifier</span>
+              <h2 class="app-num-mono">{{ statusInfo()?.applicationNumber || 'DRAFT-IN-PROGRESS' }}</h2>
             </div>
             <div [class]="getStatusBadgeClass(statusInfo()?.status)">
               {{ formatStatusLabel(statusInfo()?.status) }}
             </div>
           </div>
 
-          <!-- Status Step Timeline -->
-          <div class="timeline-container" *ngIf="statusInfo()?.status">
+          <!-- 4-Step Status Journey Timeline -->
+          <div class="timeline-wrapper" *ngIf="statusInfo()?.status">
             <div class="timeline-step" [ngClass]="{'active': isStepActive('DRAFT'), 'completed': isStepCompleted('DRAFT')}">
-              <div class="step-circle">1</div>
-              <div class="step-label">Draft</div>
+              <div class="step-icon">1</div>
+              <span class="step-title">Draft</span>
+              <span class="step-meta">In Progress</span>
             </div>
-            <div class="timeline-line" [ngClass]="{'active': isStepCompleted('DRAFT')}"></div>
+            <div class="timeline-connector" [ngClass]="{'active': isStepCompleted('DRAFT')}"></div>
 
             <div class="timeline-step" [ngClass]="{'active': isStepActive('SUBMITTED'), 'completed': isStepCompleted('SUBMITTED')}">
-              <div class="step-circle">2</div>
-              <div class="step-label">Submitted</div>
-              <div class="step-date" *ngIf="statusInfo()?.submittedAt">{{ statusInfo()?.submittedAt | date:'shortDate' }}</div>
+              <div class="step-icon">2</div>
+              <span class="step-title">Submitted</span>
+              <span class="step-meta">{{ statusInfo()?.submittedAt ? (statusInfo()?.submittedAt | date:'mediumDate') : 'Pending' }}</span>
             </div>
-            <div class="timeline-line" [ngClass]="{'active': isStepCompleted('SUBMITTED')}"></div>
+            <div class="timeline-connector" [ngClass]="{'active': isStepCompleted('SUBMITTED')}"></div>
 
             <div class="timeline-step" [ngClass]="{'active': isStepActive('UNDER_REVIEW'), 'completed': isStepCompleted('UNDER_REVIEW')}">
-              <div class="step-circle">3</div>
-              <div class="step-label">Under Review</div>
-              <div class="step-date" *ngIf="statusInfo()?.reviewStartedAt">{{ statusInfo()?.reviewStartedAt | date:'shortDate' }}</div>
+              <div class="step-icon">3</div>
+              <span class="step-title">Under Review</span>
+              <span class="step-meta">{{ statusInfo()?.reviewStartedAt ? (statusInfo()?.reviewStartedAt | date:'mediumDate') : 'Pending' }}</span>
             </div>
-            <div class="timeline-line" [ngClass]="{'active': isStepCompleted('UNDER_REVIEW')}"></div>
+            <div class="timeline-connector" [ngClass]="{'active': isStepCompleted('UNDER_REVIEW')}"></div>
 
             <div class="timeline-step" [ngClass]="{'active-selected': statusInfo()?.status === 'SELECTED', 'active-rejected': statusInfo()?.status === 'REJECTED'}">
-              <div class="step-circle">{{ statusInfo()?.status === 'REJECTED' ? '✕' : (statusInfo()?.status === 'SELECTED' ? '✓' : '4') }}</div>
-              <div class="step-label">Decision</div>
-              <div class="step-date" *ngIf="statusInfo()?.decisionAt">{{ statusInfo()?.decisionAt | date:'shortDate' }}</div>
+              <div class="step-icon">
+                {{ statusInfo()?.status === 'REJECTED' ? '✕' : (statusInfo()?.status === 'SELECTED' ? '✓' : '4') }}
+              </div>
+              <span class="step-title">Decision</span>
+              <span class="step-meta">{{ statusInfo()?.decisionAt ? (statusInfo()?.decisionAt | date:'mediumDate') : 'Awaiting' }}</span>
             </div>
           </div>
         </div>
 
-        <!-- Readiness Summary Card -->
-        <div class="card readiness-card" style="margin-top: 1.5rem;" *ngIf="readiness(); else loadingReadiness">
-          <div class="readiness-header">
+        <!-- 2. Explainable Readiness Scorecard -->
+        <div class="card-elevated readiness-card" *ngIf="readiness(); else loadingReadiness">
+          <div class="readiness-header-bar">
             <div>
-              <span class="readiness-title">Explainable Application Readiness</span>
-              <h2 class="score-display">{{ readiness()?.readinessScore }}%</h2>
+              <span class="card-kicker">Deterministic Evaluation Engine</span>
+              <div class="score-row">
+                <h2 class="score-value">{{ readiness()?.readinessScore }}%</h2>
+                <span class="score-caption">Application Completeness Index</span>
+              </div>
             </div>
-            <div class="status-badge" [ngClass]="readiness()?.canSubmit ? 'badge-ready' : 'badge-not-ready'">
-              {{ readiness()?.canSubmit ? '✓ Ready for Submission' : '⚠ Not Ready to Submit' }}
+            <div class="badge-status" [ngClass]="readiness()?.canSubmit ? 'badge-selected' : 'badge-draft'">
+              {{ readiness()?.canSubmit ? '✓ Ready for Final Submission' : '⚠ Action Required Before Submit' }}
             </div>
           </div>
 
-          <div class="progress-bar-container">
-            <div class="progress-bar-fill" [style.width.%]="readiness()?.readinessScore"></div>
+          <div class="progress-track mt-1 mb-2">
+            <div
+              class="progress-fill"
+              [ngClass]="readiness()?.canSubmit ? 'fill-selected' : 'fill-draft'"
+              [style.width.%]="readiness()?.readinessScore"
+            ></div>
           </div>
 
-          <!-- Category Score Grid -->
+          <!-- Category Breakdown Score Grid -->
           <div class="category-grid" *ngIf="readiness()?.breakdown as bd">
-            <div class="cat-pill">
-              <span class="cat-name">Personal Details</span>
-              <span class="cat-score">{{ bd.personalAndAddress.score }}/{{ bd.personalAndAddress.maxScore }}</span>
+            <div class="cat-card">
+              <span class="cat-label">Personal & Address</span>
+              <span class="cat-val">{{ bd.personalAndAddress.score }}/{{ bd.personalAndAddress.maxScore }}</span>
             </div>
-            <div class="cat-pill">
-              <span class="cat-name">Academic Details</span>
-              <span class="cat-score">{{ bd.academic.score }}/{{ bd.academic.maxScore }}</span>
+            <div class="cat-card">
+              <span class="cat-label">Academic Details</span>
+              <span class="cat-val">{{ bd.academic.score }}/{{ bd.academic.maxScore }}</span>
             </div>
-            <div class="cat-pill">
-              <span class="cat-name">Program Selection</span>
-              <span class="cat-score">{{ bd.programSelection.score }}/{{ bd.programSelection.maxScore }}</span>
+            <div class="cat-card">
+              <span class="cat-label">Program Selection</span>
+              <span class="cat-val">{{ bd.programSelection.score }}/{{ bd.programSelection.maxScore }}</span>
             </div>
-            <div class="cat-pill">
-              <span class="cat-name">Marksheets</span>
-              <span class="cat-score">{{ bd.marksheets.score }}/{{ bd.marksheets.maxScore }}</span>
+            <div class="cat-card">
+              <span class="cat-label">Class 10/12 Marksheets</span>
+              <span class="cat-val">{{ bd.marksheets.score }}/{{ bd.marksheets.maxScore }}</span>
             </div>
-            <div class="cat-pill">
-              <span class="cat-name">ID Proof</span>
-              <span class="cat-score">{{ bd.idProof.score }}/{{ bd.idProof.maxScore }}</span>
+            <div class="cat-card">
+              <span class="cat-label">Government ID Proof</span>
+              <span class="cat-val">{{ bd.idProof.score }}/{{ bd.idProof.maxScore }}</span>
             </div>
-            <div class="cat-pill">
-              <span class="cat-name">Passport Photo</span>
-              <span class="cat-score">{{ bd.passportPhoto.score }}/{{ bd.passportPhoto.maxScore }}</span>
+            <div class="cat-card">
+              <span class="cat-label">Passport Photograph</span>
+              <span class="cat-val">{{ bd.passportPhoto.score }}/{{ bd.passportPhoto.maxScore }}</span>
             </div>
           </div>
 
           <!-- Missing Requirements Checklist -->
-          <div class="checklist-section" *ngIf="(readiness()?.missingItems?.length || 0) > 0">
-            <h4>Missing Requirements Checklist ({{ readiness()?.missingItems?.length }})</h4>
-            <ul class="missing-list">
-              <li *ngFor="let item of readiness()?.missingItems">
-                <span class="warn-icon">⚠</span> <strong>{{ item.label }}</strong> ({{ item.category }})
-              </li>
-            </ul>
+          <div class="checklist-box" *ngIf="(readiness()?.missingItems?.length || 0) > 0">
+            <h4>Missing Requirement Checklist ({{ readiness()?.missingItems?.length }})</h4>
+            <div class="missing-grid">
+              <div *ngFor="let item of readiness()?.missingItems" class="missing-pill">
+                <span class="warn-dot">●</span>
+                <strong>{{ item.label }}</strong>
+                <span class="category-tag">({{ item.category }})</span>
+              </div>
+            </div>
           </div>
 
-          <div class="checklist-section" *ngIf="(readiness()?.missingItems?.length || 0) === 0">
-            <p class="all-complete">✓ All required application fields and documents are complete!</p>
+          <div class="checklist-box complete-box" *ngIf="(readiness()?.missingItems?.length || 0) === 0">
+            <p class="all-complete-text">✓ Excellent! All required profile information, academic records, and document marksheets are complete.</p>
           </div>
         </div>
 
         <ng-template #loadingReadiness>
-          <div class="card" style="margin-top: 1.5rem;">
-            <p style="color: #64748b;">Loading application readiness evaluation...</p>
+          <div class="card-elevated loading-box">
+            <p>Evaluating application completeness metrics...</p>
           </div>
         </ng-template>
 
-        <!-- Main Form Navigation Card -->
-        <div class="card" style="margin-top: 1.5rem;">
-          <h3>Admission Application Form</h3>
-          <p *ngIf="statusInfo()?.status === 'DRAFT'">Complete your personal details, academic history, program choices, and document uploads.</p>
-          <p *ngIf="statusInfo()?.status !== 'DRAFT'" style="color: #0369a1; font-weight: 600;">Application submitted. Form and documents are locked in read-only mode.</p>
-          <div class="actions">
-            <a routerLink="/applicant/application" class="btn-app">
-              {{ statusInfo()?.status === 'DRAFT' ? 'Open Admission Application Form →' : 'View Submitted Application →' }}
-            </a>
+        <!-- 3. Primary Contextual Action & Form Launcher Card -->
+        <div class="card-elevated action-card">
+          <div class="action-header">
+            <div>
+              <h3>Admission Application Form Workspace</h3>
+              <p *ngIf="statusInfo()?.status === 'DRAFT'">
+                Complete your personal details, academic history, program preference, and upload marksheets/certificates.
+              </p>
+              <p *ngIf="statusInfo()?.status !== 'DRAFT'" class="locked-text">
+                🔒 Application submitted. Your form data and uploaded documents are locked in read-only mode for institutional review.
+              </p>
+            </div>
+            <div class="action-btn-area">
+              <a routerLink="/applicant/application" class="btn btn-primary btn-lg">
+                {{ statusInfo()?.status === 'DRAFT' ? 'Open & Edit Application Form →' : 'View Submitted Application (Read-Only) →' }}
+              </a>
+            </div>
           </div>
-          <div class="meta-info">
-            <p><strong>Email:</strong> {{ currentUser()?.email }}</p>
-            <p><strong>Phone:</strong> {{ currentUser()?.phone }}</p>
-            <p><strong>Role:</strong> {{ currentUser()?.role }}</p>
+
+          <div class="meta-strip">
+            <span><strong>Applicant Email:</strong> {{ currentUser()?.email }}</span>
+            <span><strong>Mobile Phone:</strong> {{ currentUser()?.phone }}</span>
+            <span><strong>Portal Access:</strong> Applicant Candidate</span>
           </div>
+        </div>
+
+        <div class="footer-poc">
+          Academic Admission Management POC | IEM ApplySphere
         </div>
       </main>
     </div>
   `,
   styles: [`
-    .dashboard-layout { font-family: system-ui, -apple-system, sans-serif; background: #f8fafc; min-height: 100vh; }
-    .navbar { display: flex; justify-content: space-between; align-items: center; background: #1e293b; color: #fff; padding: 1rem 2rem; }
-    .brand { font-size: 1.1rem; font-weight: 700; }
-    .user-info { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; }
-    .btn-logout { background: #ef4444; color: #fff; border: none; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; font-weight: 600; }
-    .content { padding: 2rem; max-width: 850px; margin: 0 auto; }
-    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    h3 { margin-top: 0; color: #0f172a; }
-    .actions { margin: 1.25rem 0; }
-    .btn-app { background: #2563eb; color: #fff; text-decoration: none; padding: 0.75rem 1.25rem; border-radius: 6px; font-weight: 600; display: inline-block; }
-    .btn-app:hover { background: #1d4ed8; }
-    .meta-info { margin-top: 1.5rem; border-top: 1px solid #f1f5f9; padding-top: 1rem; }
-    .meta-info p { margin: 0.3rem 0; color: #475569; font-size: 0.9rem; }
+    .dashboard-layout { min-height: 100vh; background-color: var(--color-bg-light); }
     
-    .status-card { border-left: 4px solid #3b82f6; }
-    .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .sub-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #64748b; }
-    .app-num { margin: 0.2rem 0 0 0; font-size: 1.4rem; color: #0f172a; }
+    .welcome-hero {
+      margin-bottom: 1.75rem;
+    }
 
-    .badge-status { padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
-    .badge-draft { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-    .badge-submitted { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-    .badge-review { background: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-    .badge-selected { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-    .badge-rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .welcome-hero h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--color-navy-dark);
+      margin: 0 0 0.35rem 0;
+    }
 
-    .timeline-container { display: flex; align-items: center; justify-content: space-between; margin-top: 1.25rem; padding: 0.5rem 0; }
-    .timeline-step { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; }
-    .step-circle { width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
-    .step-label { font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 0.4rem; }
-    .step-date { font-size: 0.7rem; color: #94a3b8; margin-top: 0.1rem; }
-    .timeline-line { flex: 1; height: 3px; background: #e2e8f0; margin: 0 0.5rem; margin-top: -1.2rem; }
+    .welcome-hero p {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: 0.95rem;
+    }
 
-    .timeline-step.active .step-circle { background: #2563eb; color: #fff; }
-    .timeline-step.active .step-label { color: #2563eb; font-weight: 700; }
-    .timeline-step.completed .step-circle { background: #10b981; color: #fff; }
-    .timeline-line.active { background: #10b981; }
+    .card-kicker {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-text-muted);
+    }
 
-    .timeline-step.active-selected .step-circle { background: #16a34a; color: #fff; }
-    .timeline-step.active-selected .step-label { color: #16a34a; font-weight: 700; }
-    .timeline-step.active-rejected .step-circle { background: #dc2626; color: #fff; }
-    .timeline-step.active-rejected .step-label { color: #dc2626; font-weight: 700; }
+    /* Status Snapshot & Timeline */
+    .status-card { border-top: 4px solid var(--color-accent-blue); }
 
-    .readiness-header { display: flex; justify-content: space-between; align-items: flex-start; }
-    .readiness-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #64748b; }
-    .score-display { margin: 0.25rem 0 0 0; font-size: 2.25rem; font-weight: 800; color: #0f172a; }
-    .status-badge { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; }
-    .badge-ready { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .badge-not-ready { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .status-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--color-border-subtle);
+      padding-bottom: 1rem;
+    }
 
-    .progress-bar-container { background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin: 1rem 0 1.25rem 0; }
-    .progress-bar-fill { background: linear-gradient(90deg, #3b82f6, #10b981); height: 100%; transition: width 0.4s ease; }
+    .app-num-mono {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      color: var(--color-accent-blue);
+      margin: 0.2rem 0 0 0;
+      font-weight: 700;
+    }
 
-    .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 1.25rem; }
-    .cat-pill { background: #f1f5f9; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.8rem; display: flex; flex-direction: column; }
-    .cat-name { color: #64748b; font-weight: 500; }
-    .cat-score { color: #0f172a; font-weight: 700; font-size: 0.95rem; margin-top: 0.2rem; }
+    .timeline-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 0;
+    }
 
-    .checklist-section { border-top: 1px dashed #cbd5e1; padding-top: 1rem; }
-    .checklist-section h4 { margin: 0 0 0.5rem 0; font-size: 0.9rem; color: #334155; }
-    .missing-list { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.4rem; }
-    .missing-list li { font-size: 0.85rem; color: #b45309; background: #fffbeb; padding: 0.35rem 0.6rem; border-radius: 4px; border: 1px solid #fef3c7; }
-    .warn-icon { font-weight: bold; margin-right: 0.2rem; }
-    .all-complete { color: #15803d; font-weight: 600; font-size: 0.9rem; margin: 0; }
+    .timeline-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-color: #e2e8f0;
+      color: #64748b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+
+    .step-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      margin-top: 0.4rem;
+    }
+
+    .step-meta {
+      font-size: 0.725rem;
+      color: var(--color-text-light);
+      margin-top: 0.1rem;
+    }
+
+    .timeline-connector {
+      flex: 1;
+      height: 3px;
+      background-color: #e2e8f0;
+      margin: 0 0.5rem;
+      margin-top: -1.4rem;
+      transition: background-color 0.2s ease;
+    }
+
+    .timeline-step.active .step-icon {
+      background-color: var(--color-accent-blue);
+      color: #ffffff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+    }
+
+    .timeline-step.active .step-title { color: var(--color-accent-blue); font-weight: 700; }
+    
+    .timeline-step.completed .step-icon {
+      background-color: var(--color-success);
+      color: #ffffff;
+    }
+
+    .timeline-connector.active { background-color: var(--color-success); }
+
+    .timeline-step.active-selected .step-icon {
+      background-color: var(--color-success);
+      color: #ffffff;
+      box-shadow: 0 0 0 4px rgba(21, 128, 61, 0.2);
+    }
+    
+    .timeline-step.active-selected .step-title { color: var(--color-success); font-weight: 700; }
+
+    .timeline-step.active-rejected .step-icon {
+      background-color: var(--color-danger);
+      color: #ffffff;
+      box-shadow: 0 0 0 4px rgba(185, 28, 28, 0.2);
+    }
+
+    .timeline-step.active-rejected .step-title { color: var(--color-danger); font-weight: 700; }
+
+    /* Readiness Meter */
+    .readiness-card { border-top: 4px solid var(--color-navy-dark); }
+
+    .readiness-header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .score-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.8rem;
+      margin-top: 0.2rem;
+    }
+
+    .score-value {
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--color-navy-dark);
+      margin: 0;
+      line-height: 1;
+    }
+
+    .score-caption {
+      font-size: 0.85rem;
+      color: var(--color-text-muted);
+      font-weight: 500;
+    }
+
+    .progress-track {
+      background-color: #f1f5f9;
+      height: 10px;
+      border-radius: 6px;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.4s ease;
+    }
+
+    .fill-selected { background-color: var(--color-success); }
+    .fill-draft { background-color: var(--color-warning); }
+
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .cat-card {
+      background: #f8fafc;
+      border: 1px solid var(--color-border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .cat-label {
+      font-size: 0.775rem;
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+
+    .cat-val {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-navy-dark);
+      margin-top: 0.2rem;
+    }
+
+    .checklist-box {
+      border-top: 1px dashed var(--color-border-medium);
+      padding-top: 1rem;
+    }
+
+    .checklist-box h4 {
+      margin: 0 0 0.6rem 0;
+      font-size: 0.875rem;
+      color: var(--color-text-body);
+    }
+
+    .missing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 0.5rem;
+    }
+
+    .missing-pill {
+      font-size: 0.825rem;
+      background: var(--color-warning-bg);
+      color: var(--color-warning);
+      border: 1px solid var(--color-warning-border);
+      padding: 0.4rem 0.75rem;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .warn-dot { font-size: 0.65rem; }
+    .category-tag { font-size: 0.75rem; color: #92400e; }
+
+    .complete-box { border-top: 1px solid var(--color-success-border); }
+    .all-complete-text { color: var(--color-success); font-weight: 600; font-size: 0.9rem; margin: 0; }
+
+    /* Action Launcher Card */
+    .action-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.25rem;
+    }
+
+    .action-header h3 {
+      margin: 0 0 0.35rem 0;
+      color: var(--color-navy-dark);
+      font-size: 1.2rem;
+    }
+
+    .action-header p {
+      margin: 0;
+      color: var(--color-text-muted);
+      font-size: 0.9rem;
+    }
+
+    .locked-text { color: var(--color-info) !important; font-weight: 600; }
+
+    .btn-lg {
+      padding: 0.8rem 1.4rem;
+      font-size: 0.95rem;
+    }
+
+    .meta-strip {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--color-border-subtle);
+      margin-top: 1.25rem;
+      padding-top: 0.85rem;
+      font-size: 0.825rem;
+      color: var(--color-text-muted);
+    }
+
+    .loading-box { text-align: center; padding: 2.5rem; color: var(--color-text-muted); }
+    .mt-1 { margin-top: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
   `]
 })
 export class ApplicantDashboardComponent implements OnInit {
