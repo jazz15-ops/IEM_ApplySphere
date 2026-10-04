@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ApplicationService, Application, DocumentSlots, DocumentMetadata } from '../../core/services/application.service';
+import { ApplicationService, Application, DocumentSlots, DocumentMetadata, ReadinessResponse } from '../../core/services/application.service';
 
 interface DocSlotConfig {
   key: keyof DocumentSlots;
@@ -30,10 +30,60 @@ interface DocSlotConfig {
           <span class="badge-draft">STATUS: {{ application()?.status }}</span>
         </div>
 
-        <div *ngIf="successMessage()" class="alert alert-success">
+        <!-- Live Application Readiness Panel -->
+        <div class="readiness-card" *ngIf="readiness()">
+          <div class="readiness-header">
+            <div>
+              <span class="readiness-title">Live Application Readiness Evaluation</span>
+              <h2 class="score-display">{{ readiness()?.readinessScore }}%</h2>
+            </div>
+            <div class="status-badge" [ngClass]="readiness()?.canSubmit ? 'badge-ready' : 'badge-not-ready'">
+              {{ readiness()?.canSubmit ? '✓ Ready for Submission' : '⚠ Not Ready to Submit' }}
+            </div>
+          </div>
+
+          <div class="progress-bar-container">
+            <div class="progress-bar-fill" [style.width.%]="readiness()?.readinessScore"></div>
+          </div>
+
+          <!-- Category Score Summary Grid -->
+          <div class="category-grid" *ngIf="readiness()?.breakdown as bd">
+            <div class="cat-pill">
+              <span class="cat-name">Personal & Address</span>
+              <span class="cat-score">{{ bd.personalAndAddress.score }}/{{ bd.personalAndAddress.maxScore }}</span>
+            </div>
+            <div class="cat-pill">
+              <span class="cat-name">Academic Details</span>
+              <span class="cat-score">{{ bd.academic.score }}/{{ bd.academic.maxScore }}</span>
+            </div>
+            <div class="cat-pill">
+              <span class="cat-name">Program Selection</span>
+              <span class="cat-score">{{ bd.programSelection.score }}/{{ bd.programSelection.maxScore }}</span>
+            </div>
+            <div class="cat-pill">
+              <span class="cat-name">Marksheets</span>
+              <span class="cat-score">{{ bd.marksheets.score }}/{{ bd.marksheets.maxScore }}</span>
+            </div>
+            <div class="cat-pill">
+              <span class="cat-name">ID Proof</span>
+              <span class="cat-score">{{ bd.idProof.score }}/{{ bd.idProof.maxScore }}</span>
+            </div>
+            <div class="cat-pill">
+              <span class="cat-name">Passport Photo</span>
+              <span class="cat-score">{{ bd.passportPhoto.score }}/{{ bd.passportPhoto.maxScore }}</span>
+            </div>
+          </div>
+
+          <div class="missing-summary" *ngIf="(readiness()?.missingItems?.length || 0) > 0">
+            <span class="missing-badge">⚠ {{ readiness()?.missingItems?.length }} Missing Item(s)</span>
+            <span class="missing-hint">Complete required fields below to reach 100% readiness score.</span>
+          </div>
+        </div>
+
+        <div *ngIf="successMessage()" class="alert alert-success" style="margin-top: 1rem;">
           {{ successMessage() }}
         </div>
-        <div *ngIf="errorMessage()" class="alert alert-error">
+        <div *ngIf="errorMessage()" class="alert alert-error" style="margin-top: 1rem;">
           {{ errorMessage() }}
         </div>
 
@@ -43,7 +93,7 @@ interface DocSlotConfig {
             <legend>1. Personal Details</legend>
             <div class="form-grid">
               <div class="form-group">
-                <label>First Name</label>
+                <label>First Name *</label>
                 <input type="text" [(ngModel)]="form.firstName" name="firstName" class="form-control" />
               </div>
               <div class="form-group">
@@ -51,15 +101,15 @@ interface DocSlotConfig {
                 <input type="text" [(ngModel)]="form.middleName" name="middleName" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Last Name</label>
+                <label>Last Name *</label>
                 <input type="text" [(ngModel)]="form.lastName" name="lastName" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Date of Birth</label>
+                <label>Date of Birth *</label>
                 <input type="date" [(ngModel)]="form.dateOfBirth" name="dateOfBirth" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Gender</label>
+                <label>Gender *</label>
                 <select [(ngModel)]="form.gender" name="gender" class="form-control">
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
@@ -68,15 +118,15 @@ interface DocSlotConfig {
                 </select>
               </div>
               <div class="form-group">
-                <label>Mobile Phone</label>
+                <label>Mobile Phone *</label>
                 <input type="tel" [(ngModel)]="form.phone" name="phone" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Email Address</label>
+                <label>Email Address *</label>
                 <input type="email" [(ngModel)]="form.email" name="email" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Nationality</label>
+                <label>Nationality *</label>
                 <input type="text" [(ngModel)]="form.nationality" name="nationality" class="form-control" placeholder="Indian" />
               </div>
             </div>
@@ -87,7 +137,7 @@ interface DocSlotConfig {
             <legend>2. Address Details</legend>
             <div class="form-grid">
               <div class="form-group full-width">
-                <label>Address Line 1</label>
+                <label>Address Line 1 *</label>
                 <input type="text" [(ngModel)]="form.addressLine1" name="addressLine1" class="form-control" />
               </div>
               <div class="form-group full-width">
@@ -95,19 +145,19 @@ interface DocSlotConfig {
                 <input type="text" [(ngModel)]="form.addressLine2" name="addressLine2" class="form-control" />
               </div>
               <div class="form-group">
-                <label>City</label>
+                <label>City *</label>
                 <input type="text" [(ngModel)]="form.city" name="city" class="form-control" />
               </div>
               <div class="form-group">
-                <label>State</label>
+                <label>State *</label>
                 <input type="text" [(ngModel)]="form.state" name="state" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Postal Code</label>
+                <label>Postal Code *</label>
                 <input type="text" [(ngModel)]="form.postalCode" name="postalCode" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Country</label>
+                <label>Country *</label>
                 <input type="text" [(ngModel)]="form.country" name="country" class="form-control" placeholder="India" />
               </div>
             </div>
@@ -119,19 +169,19 @@ interface DocSlotConfig {
             <h4 class="sub-heading">Class 10 (Secondary)</h4>
             <div class="form-grid">
               <div class="form-group">
-                <label>Board</label>
+                <label>Board *</label>
                 <input type="text" [(ngModel)]="form.class10!.board" name="c10_board" class="form-control" placeholder="CBSE / ICSE / State" />
               </div>
               <div class="form-group">
-                <label>Institution Name</label>
+                <label>Institution Name *</label>
                 <input type="text" [(ngModel)]="form.class10!.institutionName" name="c10_school" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Passing Year</label>
+                <label>Passing Year *</label>
                 <input type="number" [(ngModel)]="form.class10!.passingYear" name="c10_year" class="form-control" placeholder="2022" />
               </div>
               <div class="form-group">
-                <label>Percentage (%)</label>
+                <label>Percentage (%) *</label>
                 <input type="number" [(ngModel)]="form.class10!.percentage" name="c10_pct" class="form-control" placeholder="85.5" step="0.1" />
               </div>
             </div>
@@ -139,19 +189,19 @@ interface DocSlotConfig {
             <h4 class="sub-heading mt">Class 12 / Diploma (Higher Secondary)</h4>
             <div class="form-grid">
               <div class="form-group">
-                <label>Board</label>
+                <label>Board *</label>
                 <input type="text" [(ngModel)]="form.class12!.board" name="c12_board" class="form-control" placeholder="CBSE / ISC / State" />
               </div>
               <div class="form-group">
-                <label>Institution Name</label>
+                <label>Institution Name *</label>
                 <input type="text" [(ngModel)]="form.class12!.institutionName" name="c12_school" class="form-control" />
               </div>
               <div class="form-group">
-                <label>Passing Year</label>
+                <label>Passing Year *</label>
                 <input type="number" [(ngModel)]="form.class12!.passingYear" name="c12_year" class="form-control" placeholder="2024" />
               </div>
               <div class="form-group">
-                <label>Percentage (%)</label>
+                <label>Percentage (%) *</label>
                 <input type="number" [(ngModel)]="form.class12!.percentage" name="c12_pct" class="form-control" placeholder="88.0" step="0.1" />
               </div>
             </div>
@@ -162,14 +212,14 @@ interface DocSlotConfig {
             <legend>4. Program Selection</legend>
             <div class="form-grid">
               <div class="form-group">
-                <label>Program Level</label>
+                <label>Program Level *</label>
                 <select [(ngModel)]="form.programLevel" name="programLevel" class="form-control">
                   <option value="Undergraduate">Undergraduate (UG)</option>
                   <option value="Postgraduate">Postgraduate (PG)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Program Name</label>
+                <label>Program Name *</label>
                 <select [(ngModel)]="form.programName" name="programName" class="form-control">
                   <option value="B.Tech Computer Science">B.Tech Computer Science & Engineering</option>
                   <option value="B.Tech Information Technology">B.Tech Information Technology</option>
@@ -180,7 +230,7 @@ interface DocSlotConfig {
                 </select>
               </div>
               <div class="form-group full-width">
-                <label>Preferred Department</label>
+                <label>Preferred Department *</label>
                 <input type="text" [(ngModel)]="form.preferredDepartment" name="preferredDepartment" class="form-control" readonly />
               </div>
             </div>
@@ -249,6 +299,27 @@ interface DocSlotConfig {
     .content { padding: 2rem; max-width: 900px; margin: 0 auto; }
     .status-banner { display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; color: #0369a1; }
     .badge-draft { background: #fef08a; color: #854d0e; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.8rem; }
+    
+    .readiness-card { background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1.5rem; }
+    .readiness-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .readiness-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; color: #64748b; }
+    .score-display { margin: 0.2rem 0 0 0; font-size: 2rem; font-weight: 800; color: #0f172a; }
+    .status-badge { padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; }
+    .badge-ready { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-not-ready { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+    .progress-bar-container { background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; margin: 0.75rem 0 1rem 0; }
+    .progress-bar-fill { background: linear-gradient(90deg, #3b82f6, #10b981); height: 100%; transition: width 0.4s ease; }
+
+    .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; }
+    .cat-pill { background: #f1f5f9; padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.8rem; display: flex; flex-direction: column; }
+    .cat-name { color: #64748b; font-weight: 500; }
+    .cat-score { color: #0f172a; font-weight: 700; font-size: 0.9rem; margin-top: 0.1rem; }
+
+    .missing-summary { margin-top: 0.75rem; border-top: 1px dashed #e2e8f0; padding-top: 0.75rem; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+    .missing-badge { background: #fef3c7; color: #92400e; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; }
+    .missing-hint { color: #64748b; }
+
     .section-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     legend { font-weight: 700; font-size: 1.05rem; color: #0f172a; padding: 0 0.5rem; }
     .section-hint { font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; }
@@ -294,6 +365,7 @@ export class ApplicationFormComponent implements OnInit {
 
   application = signal<Application | null>(null);
   documents = signal<DocumentSlots>({});
+  readiness = signal<ReadinessResponse | null>(null);
   isSaving = signal(false);
   successMessage = signal<string | null>(null);
   errorMessage = signal<string | null>(null);
@@ -322,6 +394,14 @@ export class ApplicationFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadApplication();
+    this.fetchReadiness();
+  }
+
+  fetchReadiness(): void {
+    this.appService.getReadiness().subscribe({
+      next: (res) => this.readiness.set(res),
+      error: (err) => console.error('Error fetching readiness:', err)
+    });
   }
 
   loadApplication(): void {
@@ -355,6 +435,7 @@ export class ApplicationFormComponent implements OnInit {
             this.documents.set(res.application.documents);
           }
           this.successMessage.set('Draft application updated successfully!');
+          this.fetchReadiness();
         },
         error: (err) => {
           this.isSaving.set(false);
@@ -370,6 +451,7 @@ export class ApplicationFormComponent implements OnInit {
             this.documents.set(res.application.documents);
           }
           this.successMessage.set(`Draft application created! Application No: ${res.application.applicationNumber}`);
+          this.fetchReadiness();
         },
         error: (err) => {
           this.isSaving.set(false);
@@ -401,6 +483,7 @@ export class ApplicationFormComponent implements OnInit {
         inputRef.value = '';
         this.successMessage.set(`Uploaded ${file.name} successfully!`);
         this.refreshDocMetadata();
+        this.fetchReadiness();
       },
       error: (err) => {
         this.uploadingState[slotKey] = false;
@@ -417,6 +500,7 @@ export class ApplicationFormComponent implements OnInit {
       next: () => {
         this.successMessage.set(`Document removed successfully.`);
         this.refreshDocMetadata();
+        this.fetchReadiness();
       },
       error: (err) => {
         this.errorMessage.set(err.error?.message || `Failed to remove document.`);
@@ -438,7 +522,6 @@ export class ApplicationFormComponent implements OnInit {
         const blobUrl = URL.createObjectURL(new Blob([blob], { type: docMeta.mimeType }));
         window.open(blobUrl, '_blank');
 
-        // Revoke URL after 60 seconds
         setTimeout(() => {
           URL.revokeObjectURL(blobUrl);
         }, 60000);

@@ -55,6 +55,35 @@ export interface Application {
   updatedAt?: string;
 }
 
+export interface ReadinessItem {
+  key: string;
+  label: string;
+  category: string;
+}
+
+export interface ReadinessCategoryScore {
+  score: number;
+  maxScore: number;
+}
+
+export interface ReadinessBreakdown {
+  personalAndAddress: ReadinessCategoryScore;
+  academic: ReadinessCategoryScore;
+  programSelection: ReadinessCategoryScore;
+  marksheets: ReadinessCategoryScore;
+  idProof: ReadinessCategoryScore;
+  passportPhoto: ReadinessCategoryScore;
+}
+
+export interface ReadinessResponse {
+  applicationNumber: string | null;
+  readinessScore: number;
+  canSubmit: boolean;
+  breakdown: ReadinessBreakdown;
+  missingItems: ReadinessItem[];
+  completedItems: ReadinessItem[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -72,6 +101,10 @@ export class ApplicationService {
 
   updateMyApplication(payload: Partial<Application>): Observable<{ message: string; application: Application }> {
     return this.http.patch<{ message: string; application: Application }>(`${this.API_URL}/me`, payload);
+  }
+
+  getReadiness(): Observable<ReadinessResponse> {
+    return this.http.get<ReadinessResponse>(`${this.API_URL}/me/readiness`);
   }
 
   uploadDocument(documentType: string, file: File): Observable<{ message: string; documentType: string; metadata: DocumentMetadata }> {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const applicationController = require('../controllers/application.controller');
 const documentController = require('../controllers/document.controller');
+const readinessController = require('../controllers/readiness.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const { allowRoles } = require('../middleware/role.middleware');
 const { upload } = require('../middleware/upload.middleware');
@@ -11,10 +12,11 @@ const multer = require('multer');
 router.use(authMiddleware);
 router.use(allowRoles('applicant'));
 
-// Application Draft Routes
+// Application Draft & Readiness Routes
 router.post('/', applicationController.createApplication);
 router.get('/me', applicationController.getMyApplication);
 router.patch('/me', applicationController.updateMyApplication);
+router.get('/me/readiness', readinessController.getMyApplicationReadiness);
 
 // Document Management Routes
 const handleMulterUpload = (req, res, next) => {

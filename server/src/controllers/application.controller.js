@@ -122,6 +122,13 @@ const updateMyApplication = async (req, res) => {
     delete updateData._id;
     delete updateData.createdAt;
     delete updateData.updatedAt;
+    delete updateData.documents;
+    delete updateData.readinessScore;
+    delete updateData.readiness;
+    delete updateData.canSubmit;
+    delete updateData.breakdown;
+    delete updateData.missingItems;
+    delete updateData.completedItems;
 
     // Apply updates
     Object.keys(updateData).forEach((key) => {
