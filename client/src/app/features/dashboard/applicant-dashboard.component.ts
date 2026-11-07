@@ -31,8 +31,11 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
         <!-- Hero Welcome Header -->
         <div class="welcome-hero">
           <div>
-            <h1>Welcome back, {{ currentUser()?.name }}</h1>
-            <p>Track your admission readiness, update application details, and inspect evaluation progress.</p>
+            <div class="applicant-context-kicker" *ngIf="showApplicantContextLine()">
+              Candidate: {{ currentUser()?.name }}
+            </div>
+            <h1>{{ getHeroTitle() }}</h1>
+            <p>{{ getHeroSubtitle() }}</p>
           </div>
         </div>
 
@@ -40,8 +43,8 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
         <div class="card-elevated status-card" *ngIf="statusInfo()">
           <div class="status-top-bar">
             <div>
-              <span class="card-kicker">Application Tracking Identifier</span>
-              <h2 class="app-num-mono">{{ statusInfo()?.applicationNumber || 'DRAFT-IN-PROGRESS' }}</h2>
+              <span class="card-kicker">Application Reference</span>
+              <h2 class="app-num-mono">{{ getApplicationReference() }}</h2>
             </div>
             <div [class]="getStatusBadgeClass(statusInfo()?.status)">
               {{ formatStatusLabel(statusInfo()?.status) }}
@@ -85,14 +88,15 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
         <div class="card-elevated readiness-card" *ngIf="readiness(); else loadingReadiness">
           <div class="readiness-header-bar">
             <div>
-              <span class="card-kicker">Deterministic Evaluation Engine</span>
+              <span class="card-kicker">Application Readiness Evaluation</span>
               <div class="score-row">
                 <h2 class="score-value">{{ readiness()?.readinessScore }}%</h2>
-                <span class="score-caption">Application Completeness Index</span>
+                <span class="score-caption">Application Readiness Score</span>
               </div>
+              <p class="readiness-helper-desc">Rule-based completeness assessment based on required admission information and documents.</p>
             </div>
             <div class="badge-status" [ngClass]="readiness()?.canSubmit ? 'badge-selected' : 'badge-draft'">
-              {{ readiness()?.canSubmit ? '✓ Ready for Final Submission' : '⚠ Action Required Before Submit' }}
+              {{ readiness()?.canSubmit ? '✓ Ready for Final Submission' : '⚠ Complete Required Sections Before Submission' }}
             </div>
           </div>
 
@@ -160,16 +164,19 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
           <div class="action-header">
             <div>
               <h3>Admission Application Form Workspace</h3>
+              <p *ngIf="!statusInfo()?.status">
+                Start your admission application by entering personal details, academic records, program preferences, and required documents.
+              </p>
               <p *ngIf="statusInfo()?.status === 'DRAFT'">
                 Complete your personal details, academic history, program preference, and upload marksheets/certificates.
               </p>
-              <p *ngIf="statusInfo()?.status !== 'DRAFT'" class="locked-text">
+              <p *ngIf="isSubmittedOrLocked()" class="locked-text">
                 🔒 Application submitted. Your form data and uploaded documents are locked in read-only mode for institutional review.
               </p>
             </div>
             <div class="action-btn-area">
               <a routerLink="/applicant/application" class="btn btn-primary btn-lg">
-                {{ statusInfo()?.status === 'DRAFT' ? 'Open & Edit Application Form →' : 'View Submitted Application (Read-Only) →' }}
+                {{ getActionButtonText() }}
               </a>
             </div>
           </div>
@@ -194,6 +201,15 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
       margin-bottom: 1.75rem;
     }
 
+    .applicant-context-kicker {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-accent-blue);
+      margin-bottom: 0.35rem;
+    }
+
     .welcome-hero h1 {
       font-size: 1.75rem;
       font-weight: 800;
@@ -205,6 +221,12 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
       margin: 0;
       color: var(--color-text-muted);
       font-size: 0.95rem;
+    }
+
+    .readiness-helper-desc {
+      margin: 0.35rem 0 0 0;
+      font-size: 0.825rem;
+      color: var(--color-text-muted);
     }
 
     .card-kicker {
@@ -499,16 +521,88 @@ export class ApplicantDashboardComponent implements OnInit {
     });
   }
 
-  formatStatusLabel(status?: string | null): string {
-    if (!status) return 'NOT CREATED';
+  getHeroTitle(): string {
+    const name = this.currentUser()?.name || 'Applicant';
+    const status = this.statusInfo()?.status;
+
+    if (!status) {
+      return `Welcome to IEM ApplySphere, ${name}`;
+    }
     switch (status) {
-      case 'DRAFT': return 'DRAFT';
-      case 'SUBMITTED': return 'SUBMITTED';
-      case 'UNDER_REVIEW': return 'UNDER REVIEW';
-      case 'SELECTED': return 'SELECTED ✓';
-      case 'REJECTED': return 'REJECTED ✕';
+      case 'DRAFT':
+        return `Welcome back, ${name}`;
+      case 'SUBMITTED':
+        return 'Application Submitted Successfully';
+      case 'UNDER_REVIEW':
+        return 'Your Application Is Under Review';
+      case 'SELECTED':
+        return 'Congratulations! You Have Been Selected';
+      case 'REJECTED':
+        return 'Application Decision Available';
+      default:
+        return `Welcome back, ${name}`;
+    }
+  }
+
+  getHeroSubtitle(): string {
+    const status = this.statusInfo()?.status;
+
+    if (!status) {
+      return 'Begin your admission application and complete each required section to become eligible for submission.';
+    }
+    switch (status) {
+      case 'DRAFT':
+        return 'Continue your admission application, review your readiness status, and complete any remaining requirements.';
+      case 'SUBMITTED':
+        return 'Your application has been received and is currently awaiting review by the admissions team.';
+      case 'UNDER_REVIEW':
+        return 'The admissions team is currently evaluating your submitted application and supporting documents.';
+      case 'SELECTED':
+        return 'Your application has been approved. Please review the next steps shown in your admission status.';
+      case 'REJECTED':
+        return 'The review of your application has been completed. Please refer to your application status for the final decision.';
+      default:
+        return 'Track your admission readiness, update application details, and inspect evaluation progress.';
+    }
+  }
+
+  showApplicantContextLine(): boolean {
+    const status = this.statusInfo()?.status;
+    return Boolean(status && status !== 'DRAFT' && this.currentUser()?.name);
+  }
+
+  getApplicationReference(): string {
+    if (this.statusInfo()?.applicationNumber) {
+      return this.statusInfo()!.applicationNumber!;
+    }
+    if (this.statusInfo()?.status === 'DRAFT') {
+      return 'Application Draft';
+    }
+    return 'Application Not Started';
+  }
+
+  formatStatusLabel(status?: string | null): string {
+    if (!status) return 'Application Not Started';
+    switch (status) {
+      case 'DRAFT': return 'Application Draft';
+      case 'SUBMITTED': return 'Application Submitted';
+      case 'UNDER_REVIEW': return 'Under Admission Review';
+      case 'SELECTED': return 'Selected for Admission';
+      case 'REJECTED': return 'Application Not Selected';
       default: return status;
     }
+  }
+
+  getActionButtonText(): string {
+    const status = this.statusInfo()?.status;
+    if (!status) return 'Start Application Form →';
+    if (status === 'DRAFT') return 'Continue Application Form →';
+    return 'View Submitted Application (Read-Only) →';
+  }
+
+  isSubmittedOrLocked(): boolean {
+    const status = this.statusInfo()?.status;
+    return Boolean(status && status !== 'DRAFT');
   }
 
   getStatusBadgeClass(status?: string | null): string {
