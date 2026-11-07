@@ -424,7 +424,7 @@ export class AdminReviewDetailComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('applicationId');
+    const id = this.route.snapshot.paramMap.get('applicationId') || this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadDetail(id);
     } else {

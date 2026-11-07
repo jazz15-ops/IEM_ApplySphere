@@ -31,7 +31,7 @@ export const routes: Routes = [
     data: { role: 'admin' }
   },
   {
-    path: 'admin/applications/:id',
+    path: 'admin/applications/:applicationId',
     component: AdminReviewDetailComponent,
     canActivate: [authGuard, roleGuard],
     data: { role: 'admin' }
