@@ -7,8 +7,8 @@ const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
 
-// Helper to safely escape regex input
-const escapeRegex = (text) => text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
+// Helper to safely escape regex special characters
+const escapeRegex = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * GET /api/admin/applications
@@ -28,8 +28,8 @@ const getAdminApplications = async (req, res) => {
     const filter = {};
 
     // Filter by status if valid
-    if (status && VALID_STATUSES.includes(status.toUpperCase())) {
-      filter.status = status.toUpperCase();
+    if (status && typeof status === 'string' && VALID_STATUSES.includes(status.trim().toUpperCase())) {
+      filter.status = status.trim().toUpperCase();
     }
 
     // Filter by department
@@ -40,22 +40,41 @@ const getAdminApplications = async (req, res) => {
     // Filter by search term
     if (search && typeof search === 'string' && search.trim()) {
       const searchStr = search.trim();
-      const searchRegex = new RegExp(escapeRegex(searchStr), 'i');
+      const escapedTerm = escapeRegex(searchStr);
+      const searchRegex = new RegExp(escapedTerm, 'i');
 
-      // Find matching users by name or email
+      // 1. Cross-collection lookup: find matching users by name or email
+      // (User schema stores single 'name' and 'email')
       const matchingUsers = await User.find({
         $or: [{ name: searchRegex }, { email: searchRegex }]
       }).select('_id');
 
       const userIds = matchingUsers.map(u => u._id);
 
-      filter.$or = [
+      // 2. Build search conditions for Application collection
+      const searchOr = [
         { applicationNumber: searchRegex },
         { firstName: searchRegex },
         { lastName: searchRegex },
         { email: searchRegex },
         { applicant: { $in: userIds } }
       ];
+
+      // 3. Support full applicant name search where practical (e.g. "Ana Roy")
+      // If search contains multiple words, match firstName and lastName together
+      const nameParts = searchStr.split(/\s+/).filter(Boolean);
+      if (nameParts.length >= 2) {
+        const firstPartRegex = new RegExp(escapeRegex(nameParts[0]), 'i');
+        const lastPartRegex = new RegExp(escapeRegex(nameParts.slice(1).join(' ')), 'i');
+        searchOr.push({
+          $and: [
+            { firstName: firstPartRegex },
+            { lastName: lastPartRegex }
+          ]
+        });
+      }
+
+      filter.$or = searchOr;
     }
 
     const total = await Application.countDocuments(filter);

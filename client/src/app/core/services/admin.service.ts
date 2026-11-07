@@ -132,9 +132,9 @@ export class AdminService {
   getApplications(filters: { status?: string; department?: string; search?: string; page?: number; limit?: number } = {}): Observable<AdminApplicationsResponse> {
     let params = new HttpParams();
 
-    if (filters.status) params = params.set('status', filters.status);
-    if (filters.department) params = params.set('department', filters.department);
-    if (filters.search) params = params.set('search', filters.search);
+    if (filters.status && filters.status.trim()) params = params.set('status', filters.status.trim());
+    if (filters.department && filters.department.trim()) params = params.set('department', filters.department.trim());
+    if (filters.search && filters.search.trim()) params = params.set('search', filters.search.trim());
     if (filters.page) params = params.set('page', filters.page.toString());
     if (filters.limit) params = params.set('limit', filters.limit.toString());
 

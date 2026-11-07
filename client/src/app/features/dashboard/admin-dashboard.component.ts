@@ -641,7 +641,7 @@ export class AdminDashboardComponent implements OnInit {
     this.adminService.getApplications({
       status: this.statusFilter,
       department: this.deptFilter,
-      search: this.searchQuery,
+      search: this.searchQuery?.trim() || '',
       page: this.currentPage,
       limit: 10
     }).subscribe({
