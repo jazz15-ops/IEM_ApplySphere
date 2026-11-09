@@ -352,10 +352,64 @@ html, body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
-.form-control:read-only, .form-control:disabled {
+input.form-control:read-only,
+.form-control:disabled {
   background-color: #f8fafc;
   color: #64748b;
   cursor: not-allowed;
+}
+
+select.form-control {
+  cursor: pointer;
+  background-color: #ffffff;
+}
+
+select.form-control:disabled {
+  background-color: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+/* Normalize focus and suppress browser default invalid glow */
+select.form-control:focus {
+  outline: none;
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.form-control:invalid,
+select:invalid {
+  box-shadow: none;
+}
+
+/* Validation error state: only when invalid & touched/submitted, and not actively focused */
+.form-control.is-invalid:not(:focus),
+.form-control.ng-invalid.ng-touched:not(:focus) {
+  border-color: var(--color-danger);
+}
+
+.form-control.is-invalid:focus,
+.form-control.ng-invalid.ng-touched:focus {
+  outline: none;
+  border-color: var(--color-accent-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.field-hint-text {
+  display: block;
+  font-size: 0.775rem;
+  color: var(--color-text-muted);
+  margin-top: 0.15rem;
+  margin-bottom: 0.35rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.field-error-text {
+  font-size: 0.775rem;
+  color: var(--color-danger);
+  margin-top: 0.25rem;
+  font-weight: 500;
 }
 
 /* Responsive Form Grid Utilities */

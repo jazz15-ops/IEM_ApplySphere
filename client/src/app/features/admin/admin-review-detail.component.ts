@@ -155,11 +155,11 @@ interface DocSlotConfig {
 
         <!-- 5. Program Choice Card -->
         <div class="card-elevated section-card">
-          <h3 class="section-title">4. Program & Department Selection</h3>
+          <h3 class="section-title">4. Degree & Programme Selection</h3>
           <div class="detail-grid">
-            <div class="detail-item"><label>Program Level:</label> <span>{{ app.programSelection.programLevel || '—' }}</span></div>
-            <div class="detail-item"><label>Program Name:</label> <span>{{ app.programSelection.programName || '—' }}</span></div>
-            <div class="detail-item full-width"><label>Preferred Department:</label> <strong class="dept-text">{{ app.programSelection.preferredDepartment || '—' }}</strong></div>
+            <div class="detail-item"><label>Program Level:</label> <span>{{ app.programSelection.programLevel || 'Undergraduate (UG)' }}</span></div>
+            <div class="detail-item"><label>Degree:</label> <span>{{ formatDegree(app.programSelection.programName) }}</span></div>
+            <div class="detail-item full-width"><label>Preferred Programme / Specialisation:</label> <strong class="dept-text">{{ app.programSelection.preferredDepartment || '—' }}</strong></div>
           </div>
         </div>
 
@@ -523,6 +523,14 @@ export class AdminReviewDetailComponent implements OnInit {
       case 'REJECTED': return base + 'badge-rejected';
       default: return base + 'badge-draft';
     }
+  }
+
+  formatDegree(val?: string): string {
+    if (!val || val === 'N/A') return 'Bachelor of Technology (B.Tech)';
+    if (val === 'B.Tech Computer Science' || val.includes('B.Tech')) {
+      return 'Bachelor of Technology (B.Tech)';
+    }
+    return val;
   }
 
   logout(): void {

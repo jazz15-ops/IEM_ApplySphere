@@ -106,8 +106,8 @@ const applicationSchema = new mongoose.Schema(
 
     // Program Selection
     programLevel: { type: String, trim: true, default: 'Undergraduate' },
-    programName: { type: String, trim: true, default: 'B.Tech Computer Science' },
-    preferredDepartment: { type: String, trim: true, default: 'School of Engineering & Technology' },
+    programName: { type: String, trim: true, default: 'Bachelor of Technology (B.Tech)' },
+    preferredDepartment: { type: String, trim: true, default: '' },
 
     // Document References (Metadata ONLY, no binary contents)
     documents: {

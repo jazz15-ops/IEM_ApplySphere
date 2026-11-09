@@ -74,8 +74,8 @@ const createApplication = async (req, res) => {
       class10: class10 || {},
       class12: class12 || {},
       programLevel: programLevel || 'Undergraduate',
-      programName: programName || 'B.Tech Computer Science',
-      preferredDepartment: preferredDepartment || 'School of Engineering & Technology'
+      programName: programName || 'Bachelor of Technology (B.Tech)',
+      preferredDepartment: preferredDepartment !== undefined ? preferredDepartment : ''
     });
 
     await newApplication.save();

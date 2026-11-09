@@ -143,7 +143,7 @@ interface DocSlotConfig {
         </div>
 
         <!-- Admission Form -->
-        <form (ngSubmit)="saveDraft()" #appForm="ngForm">
+        <form (ngSubmit)="saveDraft()" #appForm="ngForm" novalidate>
           <!-- Section 1: Personal Details -->
           <fieldset id="section-personal" class="card-elevated section-fieldset" [disabled]="isLocked()">
             <legend class="section-legend">1. Personal Candidate Details</legend>
@@ -164,14 +164,29 @@ interface DocSlotConfig {
                 <label>Date of Birth *</label>
                 <input type="date" [(ngModel)]="form.dateOfBirth" name="dateOfBirth" class="form-control" [readonly]="isLocked()" />
               </div>
-              <div class="form-group">
-                <label>Gender *</label>
-                <select [(ngModel)]="form.gender" name="gender" class="form-control" [disabled]="isLocked()">
+              <div class="form-group" [class.has-error]="genderModel.invalid && (genderModel.touched || appForm.submitted)">
+                <label for="gender">Gender *</label>
+                <select
+                  id="gender"
+                  [(ngModel)]="form.gender"
+                  name="gender"
+                  required
+                  #genderModel="ngModel"
+                  class="form-control"
+                  [class.is-invalid]="genderModel.invalid && (genderModel.touched || appForm.submitted)"
+                  [disabled]="isLocked()"
+                >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
                 </select>
+                <span
+                  class="field-error-text"
+                  *ngIf="genderModel.invalid && (genderModel.touched || appForm.submitted)"
+                >
+                  Please select a valid gender option.
+                </span>
               </div>
               <div class="form-group">
                 <label>Mobile Phone *</label>
@@ -280,19 +295,41 @@ interface DocSlotConfig {
                 </select>
               </div>
               <div class="form-group">
-                <label>Program Name *</label>
+                <label>Degree *</label>
                 <select [(ngModel)]="form.programName" name="programName" class="form-control" [disabled]="isLocked()">
-                  <option value="B.Tech Computer Science">B.Tech Computer Science & Engineering</option>
-                  <option value="B.Tech Information Technology">B.Tech Information Technology</option>
-                  <option value="B.Tech Electronics & Comm">B.Tech Electronics & Comm Engineering</option>
-                  <option value="BBA">BBA (Bachelor of Business Administration)</option>
-                  <option value="MBA">MBA (Master of Business Administration)</option>
-                  <option value="MCA">MCA (Master of Computer Applications)</option>
+                  <option value="Bachelor of Technology (B.Tech)">Bachelor of Technology (B.Tech)</option>
+                  <!-- Backward compatibility option for legacy stored values like Ana Roy's -->
+                  <option *ngIf="form.programName && form.programName !== 'Bachelor of Technology (B.Tech)'" [value]="form.programName">
+                    {{ form.programName }}
+                  </option>
                 </select>
               </div>
-              <div class="form-group full-width">
-                <label>Preferred Department (Auto-Mapped) *</label>
-                <input type="text" [(ngModel)]="form.preferredDepartment" name="preferredDepartment" class="form-control" readonly />
+              <div class="form-group full-width" [class.has-error]="programSpecialisationModel.invalid && (programSpecialisationModel.touched || appForm.submitted)">
+                <label for="preferredDepartment">Preferred B.Tech Programme / Specialisation *</label>
+                <span class="field-hint-text">Select the programme or specialisation you wish to be considered for during admission review.</span>
+                <select
+                  id="preferredDepartment"
+                  [(ngModel)]="form.preferredDepartment"
+                  name="preferredDepartment"
+                  required
+                  #programSpecialisationModel="ngModel"
+                  class="form-control"
+                  [class.is-invalid]="programSpecialisationModel.invalid && (programSpecialisationModel.touched || appForm.submitted)"
+                  [disabled]="isLocked()"
+                >
+                  <option value="">Select preferred programme / specialisation</option>
+                  <option *ngFor="let prog of btechPrograms" [value]="prog">{{ prog }}</option>
+                  <!-- Support for legacy non-standard values like Ana Roy's existing record -->
+                  <option *ngIf="form.preferredDepartment && !isStandardProgram(form.preferredDepartment)" [value]="form.preferredDepartment">
+                    {{ form.preferredDepartment }}
+                  </option>
+                </select>
+                <span
+                  class="field-error-text"
+                  *ngIf="programSpecialisationModel.invalid && (programSpecialisationModel.touched || appForm.submitted)"
+                >
+                  Please select your preferred B.Tech programme or specialisation.
+                </span>
               </div>
             </div>
           </fieldset>
@@ -632,9 +669,30 @@ export class ApplicationFormComponent implements OnInit {
     class10: { board: '', institutionName: '', passingYear: undefined as number | undefined | null, percentage: undefined as number | undefined | null },
     class12: { board: '', institutionName: '', passingYear: undefined as number | undefined | null, percentage: undefined as number | undefined | null },
     programLevel: 'Undergraduate',
-    programName: 'B.Tech Computer Science',
-    preferredDepartment: 'School of Engineering & Technology'
+    programName: 'Bachelor of Technology (B.Tech)',
+    preferredDepartment: ''
   };
+
+  readonly btechPrograms: string[] = [
+    'CSE — Computer Science and Engineering',
+    'CSE (AIML) — Computer Science and Engineering (Artificial Intelligence and Machine Learning)',
+    'CSE (AI) — Computer Science and Engineering (Artificial Intelligence)',
+    'CSE (IoT) — Computer Science and Engineering (Internet of Things)',
+    'CSE (IoTCSBT) — Computer Science and Engineering (Internet of Things and Cyber Security including Blockchain Technology)',
+    'CSE (Cyber Security) — Computer Science and Engineering (Cyber Security)',
+    'CSE (DS) — Computer Science and Engineering (Data Science)',
+    'CSE (AI & DS) — Computer Science and Engineering (Artificial Intelligence and Data Science)',
+    'CSBS — Computer Science and Business Systems',
+    'IT — Information Technology',
+    'ECE — Electronics and Communication Engineering',
+    'EE — Electrical Engineering',
+    'EEE — Electrical and Electronics Engineering',
+    'ME — Mechanical Engineering'
+  ];
+
+  isStandardProgram(val: string): boolean {
+    return this.btechPrograms.includes(val);
+  }
 
   docSlots: DocSlotConfig[] = [
     { key: 'class10Marksheet', label: 'Class 10 Marksheet', accept: '.pdf,.jpg,.jpeg,.png', hint: 'Secondary mark sheet (PDF or image, max 5 MB)' },
@@ -734,8 +792,8 @@ export class ApplicationFormComponent implements OnInit {
     }
 
     this.form.programLevel = app.programLevel || 'Undergraduate';
-    this.form.programName = app.programName || 'B.Tech Computer Science';
-    this.form.preferredDepartment = app.preferredDepartment || 'School of Engineering & Technology';
+    this.form.programName = app.programName || 'Bachelor of Technology (B.Tech)';
+    this.form.preferredDepartment = app.preferredDepartment || '';
   }
 
   saveDraft(): void {

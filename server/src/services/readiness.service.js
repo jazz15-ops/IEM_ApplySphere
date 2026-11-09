@@ -120,8 +120,8 @@ const calculateReadiness = (application) => {
   // --- Category C: Program Selection (10 points max, 3 required fields) ---
   const programFields = [
     { key: 'program.programLevel', field: 'programLevel', label: 'Program Level', cat: 'Program Selection' },
-    { key: 'program.programName', field: 'programName', label: 'Program Name', cat: 'Program Selection' },
-    { key: 'program.preferredDepartment', field: 'preferredDepartment', label: 'Preferred Department', cat: 'Program Selection' }
+    { key: 'program.programName', field: 'programName', label: 'Degree', cat: 'Program Selection' },
+    { key: 'program.preferredDepartment', field: 'preferredDepartment', label: 'Preferred B.Tech Programme / Specialisation', cat: 'Program Selection' }
   ];
 
   let programCompletedCount = 0;
@@ -242,8 +242,8 @@ function getAllPossibleMissingItems() {
     { key: 'academic.class12.passingYear', label: 'Class 12 Passing Year', category: 'Academic Details' },
     { key: 'academic.class12.percentage', label: 'Class 12 Percentage', category: 'Academic Details' },
     { key: 'program.programLevel', label: 'Program Level', category: 'Program Selection' },
-    { key: 'program.programName', label: 'Program Name', category: 'Program Selection' },
-    { key: 'program.preferredDepartment', label: 'Preferred Department', category: 'Program Selection' },
+    { key: 'program.programName', label: 'Degree', category: 'Program Selection' },
+    { key: 'program.preferredDepartment', label: 'Preferred B.Tech Programme / Specialisation', category: 'Program Selection' },
     { key: 'documents.class10Marksheet', label: 'Class 10 Marksheet', category: 'Documents' },
     { key: 'documents.class12Marksheet', label: 'Class 12 Marksheet', category: 'Documents' },
     { key: 'documents.idProof', label: 'ID Proof', category: 'Documents' },

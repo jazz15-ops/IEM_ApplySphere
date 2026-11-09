@@ -234,7 +234,7 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnaly
                   <tr>
                     <th>App Number</th>
                     <th>Candidate Name & Email</th>
-                    <th>Program / Department</th>
+                    <th>Degree / Programme</th>
                     <th>Readiness Index</th>
                     <th>Workflow Status</th>
                     <th>Submitted Date</th>
@@ -252,7 +252,7 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnaly
                     </td>
                     <td>
                       <div class="cell-column">
-                        <span class="program-title">{{ app.programName }}</span>
+                        <span class="program-title">{{ formatDegree(app.programName) }}</span>
                         <span class="dept-subtitle">{{ app.preferredDepartment }}</span>
                       </div>
                     </td>
@@ -713,6 +713,14 @@ export class AdminDashboardComponent implements OnInit {
       case 'REJECTED': return base + 'badge-rejected';
       default: return base + 'badge-draft';
     }
+  }
+
+  formatDegree(val?: string): string {
+    if (!val || val === 'N/A') return 'Bachelor of Technology (B.Tech)';
+    if (val === 'B.Tech Computer Science' || val.includes('B.Tech')) {
+      return 'Bachelor of Technology (B.Tech)';
+    }
+    return val;
   }
 
   logout(): void {
