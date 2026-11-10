@@ -13,7 +13,9 @@ import { AuthService } from '../../../core/services/auth.service';
       <!-- Left Hero Branding Section -->
       <div class="auth-hero-panel">
         <div class="brand-badge">
-          <span class="badge-logo">IEM</span>
+          <div class="auth-logo-container">
+            <img src="/iem-logo.png" alt="Institute of Engineering & Management Logo" class="auth-logo-img" />
+          </div>
           <span class="badge-title">ApplySphere</span>
         </div>
 
@@ -54,6 +56,13 @@ import { AuthService } from '../../../core/services/auth.service';
       <!-- Right Form Card Section -->
       <div class="auth-form-panel">
         <div class="auth-card">
+          <div class="mobile-brand-header">
+            <div class="auth-logo-container-mobile">
+              <img src="/iem-logo.png" alt="Institute of Engineering & Management Logo" class="auth-logo-img-mobile" />
+            </div>
+            <span class="badge-title-mobile">ApplySphere</span>
+          </div>
+
           <div class="card-header">
             <h2>Candidate Registration</h2>
             <p>Fill in your details below to register your applicant profile</p>
@@ -142,6 +151,42 @@ import { AuthService } from '../../../core/services/auth.service';
     @media (max-width: 900px) {
       .auth-wrapper { grid-template-columns: 1fr; }
       .auth-hero-panel { display: none; }
+      .mobile-brand-header { display: flex; }
+    }
+
+    .mobile-brand-header {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--color-border-subtle);
+    }
+
+    .auth-logo-container-mobile {
+      background: #ffffff;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--color-border-subtle);
+    }
+
+    .auth-logo-img-mobile {
+      width: 95px;
+      height: 38px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .badge-title-mobile {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-navy-dark);
+      letter-spacing: -0.01em;
     }
 
     /* Left Hero Panel */
@@ -158,21 +203,28 @@ import { AuthService } from '../../../core/services/auth.service';
     .brand-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.6rem;
+      gap: 1rem;
     }
 
-    .badge-logo {
-      background: var(--color-accent-blue);
-      color: #fff;
-      font-weight: 800;
-      padding: 0.4rem 0.75rem;
-      border-radius: 6px;
-      font-size: 1.1rem;
-      letter-spacing: 0.05em;
+    .auth-logo-container {
+      background: #ffffff;
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    .auth-logo-img {
+      width: 140px;
+      height: 52px;
+      object-fit: contain;
+      display: block;
     }
 
     .badge-title {
-      font-size: 1.35rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: #38bdf8;
       letter-spacing: -0.01em;

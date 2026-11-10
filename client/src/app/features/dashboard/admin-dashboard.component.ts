@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnalyticsResponse } from '../../core/services/admin.service';
+import { BTECH_PROGRAMS } from '../../core/constants/programs.constant';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -13,7 +14,9 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnaly
     <div class="dashboard-layout fade-in">
       <header class="navbar">
         <div class="brand-container">
-          <span class="brand-logo-mark">IEM</span>
+          <div class="brand-logo-container">
+            <img src="/iem-logo.png" alt="Institute of Engineering & Management" class="brand-logo-img" />
+          </div>
           <div class="brand-text">
             <span class="brand-title">ApplySphere</span>
             <span class="brand-subtitle">Admission Operations Console</span>
@@ -174,7 +177,7 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnaly
           <div class="card-elevated filter-card">
             <div class="section-title">
               <h2>Candidate Applications Review Workspace</h2>
-              <p>Search candidate records, filter by status or department, view document attachments, and execute server-controlled status evaluations.</p>
+              <p>Search candidate records, filter by status or B.Tech programme, view document attachments, and execute server-controlled status evaluations.</p>
             </div>
 
             <!-- Filter Controls -->
@@ -203,10 +206,8 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnaly
 
               <div class="filter-dropdown-wrap">
                 <select [(ngModel)]="deptFilter" (change)="applyFilters()" class="form-control">
-                  <option value="">All Departments</option>
-                  <option value="School of Engineering & Technology">School of Engineering & Tech</option>
-                  <option value="Department of Management">Department of Management</option>
-                  <option value="School of Computer Applications">School of Computer Applications</option>
+                  <option value="">All B.Tech Programmes</option>
+                  <option *ngFor="let prog of btechPrograms" [value]="prog">{{ prog }}</option>
                 </select>
               </div>
 
@@ -596,6 +597,8 @@ import { AdminService, AdminApplicationListItem, AdminPaginationMeta, AdminAnaly
 export class AdminDashboardComponent implements OnInit {
   private authService = inject(AuthService);
   private adminService = inject(AdminService);
+
+  readonly btechPrograms = BTECH_PROGRAMS;
 
   currentUser = this.authService.currentUserSignal;
   applications = signal<AdminApplicationListItem[]>([]);

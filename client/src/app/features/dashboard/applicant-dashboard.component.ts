@@ -12,7 +12,9 @@ import { ApplicationService, ReadinessResponse, ApplicationStatusResponse } from
     <div class="dashboard-layout fade-in">
       <header class="navbar">
         <div class="brand-container">
-          <span class="brand-logo-mark">IEM</span>
+          <div class="brand-logo-container">
+            <img src="/iem-logo.png" alt="Institute of Engineering & Management Logo" class="brand-logo-img" />
+          </div>
           <div class="brand-text">
             <span class="brand-title">ApplySphere</span>
             <span class="brand-subtitle">Smart Candidate Admission Portal</span>

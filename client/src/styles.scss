@@ -84,6 +84,24 @@ html, body {
   gap: 0.75rem;
 }
 
+.brand-logo-container {
+  background: #ffffff;
+  padding: 3px 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.brand-logo-img {
+  width: 82px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+}
+
 .brand-logo-mark {
   background: linear-gradient(135deg, #2563eb, #38bdf8);
   color: #fff;
@@ -441,4 +459,20 @@ select:invalid {
 
 .fade-in {
   animation: fadeIn 0.25s ease-out forwards;
+}
+
+@media (max-width: 640px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+  .brand-logo-img {
+    width: 72px;
+    height: 32px;
+  }
+  .brand-title {
+    font-size: 1rem;
+  }
+  .brand-subtitle {
+    font-size: 0.7rem;
+  }
 }

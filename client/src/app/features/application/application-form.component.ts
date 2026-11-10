@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ApplicationService, Application, DocumentSlots, DocumentMetadata, ReadinessResponse } from '../../core/services/application.service';
 import { AuthService } from '../../core/services/auth.service';
 import { environment } from '../../../environments/environment';
+import { BTECH_PROGRAMS } from '../../core/constants/programs.constant';
 
 interface DocSlotConfig {
   key: keyof DocumentSlots;
@@ -21,7 +22,9 @@ interface DocSlotConfig {
     <div class="app-form-layout fade-in">
       <header class="navbar">
         <div class="brand-container">
-          <span class="brand-logo-mark">IEM</span>
+          <div class="brand-logo-container">
+            <img src="/iem-logo.png" alt="Institute of Engineering & Management" class="brand-logo-img" />
+          </div>
           <div class="brand-text">
             <span class="brand-title">ApplySphere</span>
             <span class="brand-subtitle">Admission Application Workspace</span>
@@ -674,25 +677,10 @@ export class ApplicationFormComponent implements OnInit {
     preferredDepartment: ''
   };
 
-  readonly btechPrograms: string[] = [
-    'CSE — Computer Science and Engineering',
-    'CSE (AIML) — Computer Science and Engineering (Artificial Intelligence and Machine Learning)',
-    'CSE (AI) — Computer Science and Engineering (Artificial Intelligence)',
-    'CSE (IoT) — Computer Science and Engineering (Internet of Things)',
-    'CSE (IoTCSBT) — Computer Science and Engineering (Internet of Things and Cyber Security including Blockchain Technology)',
-    'CSE (Cyber Security) — Computer Science and Engineering (Cyber Security)',
-    'CSE (DS) — Computer Science and Engineering (Data Science)',
-    'CSE (AI & DS) — Computer Science and Engineering (Artificial Intelligence and Data Science)',
-    'CSBS — Computer Science and Business Systems',
-    'IT — Information Technology',
-    'ECE — Electronics and Communication Engineering',
-    'EE — Electrical Engineering',
-    'EEE — Electrical and Electronics Engineering',
-    'ME — Mechanical Engineering'
-  ];
+  readonly btechPrograms = BTECH_PROGRAMS;
 
   isStandardProgram(val: string): boolean {
-    return this.btechPrograms.includes(val);
+    return (this.btechPrograms as readonly string[]).includes(val);
   }
 
   docSlots: DocSlotConfig[] = [
