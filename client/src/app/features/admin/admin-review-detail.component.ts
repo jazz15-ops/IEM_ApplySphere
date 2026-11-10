@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { AdminService, AdminApplicationDetail } from '../../core/services/admin.service';
 import { DocumentMetadata, DocumentSlots } from '../../core/services/application.service';
+import { environment } from '../../../environments/environment';
 
 interface DocSlotConfig {
   key: keyof DocumentSlots;
@@ -485,17 +486,30 @@ export class AdminReviewDetailComponent implements OnInit {
     if (!app) return;
 
     this.setDownloading(slotKey, true);
-    this.adminService.downloadAdminDocument(app._id, slotKey).subscribe({
-      next: (blob) => {
-        this.setDownloading(slotKey, false);
-        const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank');
-      },
-      error: (err) => {
-        this.setDownloading(slotKey, false);
-        this.actionError.set('Failed to stream candidate document file.');
-      }
-    });
+    if (environment.production) {
+      this.adminService.getAdminDocumentViewUrl(app._id, slotKey).subscribe({
+        next: (res) => {
+          this.setDownloading(slotKey, false);
+          window.open(res.url, '_blank');
+        },
+        error: () => {
+          this.setDownloading(slotKey, false);
+          this.actionError.set('Failed to open candidate document preview.');
+        }
+      });
+    } else {
+      this.adminService.downloadAdminDocument(app._id, slotKey).subscribe({
+        next: (blob) => {
+          this.setDownloading(slotKey, false);
+          const url = window.URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        },
+        error: () => {
+          this.setDownloading(slotKey, false);
+          this.actionError.set('Failed to stream candidate document file.');
+        }
+      });
+    }
   }
 
   private setDownloading(slotKey: string, status: boolean): void {

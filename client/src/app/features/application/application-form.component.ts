@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApplicationService, Application, DocumentSlots, DocumentMetadata, ReadinessResponse } from '../../core/services/application.service';
 import { AuthService } from '../../core/services/auth.service';
+import { environment } from '../../../environments/environment';
 
 interface DocSlotConfig {
   key: keyof DocumentSlots;
@@ -888,17 +889,30 @@ export class ApplicationFormComponent implements OnInit {
 
   viewDocument(slotKey: keyof DocumentSlots): void {
     this.setDownloading(slotKey, true);
-    this.applicationService.downloadDocumentFile(slotKey).subscribe({
-      next: (blob: Blob) => {
-        this.setDownloading(slotKey, false);
-        const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank');
-      },
-      error: () => {
-        this.setDownloading(slotKey, false);
-        this.errorMessage.set('Failed to open document file stream.');
-      }
-    });
+    if (environment.production) {
+      this.applicationService.getDocumentViewUrl(slotKey).subscribe({
+        next: (res) => {
+          this.setDownloading(slotKey, false);
+          window.open(res.url, '_blank');
+        },
+        error: () => {
+          this.setDownloading(slotKey, false);
+          this.errorMessage.set('Failed to open document file.');
+        }
+      });
+    } else {
+      this.applicationService.downloadDocumentFile(slotKey).subscribe({
+        next: (blob: Blob) => {
+          this.setDownloading(slotKey, false);
+          const url = window.URL.createObjectURL(blob);
+          window.open(url, '_blank');
+        },
+        error: () => {
+          this.setDownloading(slotKey, false);
+          this.errorMessage.set('Failed to open document file stream.');
+        }
+      });
+    }
   }
 
   removeDocument(slotKey: keyof DocumentSlots): void {

@@ -33,6 +33,7 @@ const documentMetaSchema = new mongoose.Schema(
     originalName: { type: String, required: true },
     storedName: { type: String, required: true },
     relativePath: { type: String, required: true },
+    storageProvider: { type: String, enum: ['local', 'blob'], default: 'local' },
     mimeType: { type: String, required: true },
     size: { type: Number, required: true },
     uploadedAt: { type: Date, default: Date.now }

@@ -3,6 +3,7 @@ const User = require('../models/User');
 const { calculateReadiness } = require('../services/readiness.service');
 const { executeTransition, VALID_STATUSES } = require('../services/statusWorkflow.service');
 const { ALLOWED_DOCUMENT_TYPES } = require('../middleware/upload.middleware');
+const storageService = require('../services/storage.service');
 const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
@@ -201,8 +202,9 @@ const getAdminApplicationById = async (req, res) => {
 };
 
 /**
+/**
  * GET /api/admin/applications/:applicationId/documents/:documentType/file
- * Admin-only protected streaming of applicant uploaded document file.
+ * Admin-only protected streaming of applicant uploaded document file (or 302 redirect for Blob).
  */
 const streamAdminDocumentFile = async (req, res) => {
   try {
@@ -225,8 +227,16 @@ const streamAdminDocumentFile = async (req, res) => {
     }
 
     const docMeta = application.documents ? application.documents[documentType] : null;
-    if (!docMeta || !docMeta.storedName) {
+    if (!docMeta || (!docMeta.storedName && !docMeta.relativePath)) {
       return res.status(404).json({ message: `No document uploaded for slot '${documentType}'` });
+    }
+
+    if (storageService.isBlobDocument(docMeta)) {
+      const viewResult = await storageService.generateSignedViewUrl(docMeta);
+      if (viewResult && viewResult.url) {
+        return res.redirect(302, viewResult.url);
+      }
+      return res.status(404).json({ message: 'Failed to generate signed view URL for blob' });
     }
 
     const uploadsDir = path.resolve(__dirname, '../../../uploads/applications');
@@ -246,6 +256,57 @@ const streamAdminDocumentFile = async (req, res) => {
   } catch (error) {
     console.error('Stream admin document error:', error);
     return res.status(500).json({ message: 'Error streaming document file' });
+  }
+};
+
+/**
+ * GET /api/admin/applications/:applicationId/documents/:documentType/view-url
+ * Returns short-lived signed GET URL for Blob or local streaming URL for admin preview.
+ */
+const getAdminDocumentViewUrl = async (req, res) => {
+  try {
+    const { applicationId, documentType } = req.params;
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(documentType)) {
+      return res.status(400).json({ message: `Invalid document type '${documentType}'` });
+    }
+
+    let query = {};
+    if (mongoose.Types.ObjectId.isValid(applicationId)) {
+      query = { _id: applicationId };
+    } else {
+      query = { applicationNumber: applicationId };
+    }
+
+    const application = await Application.findOne(query);
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    const docMeta = application.documents ? application.documents[documentType] : null;
+    if (!docMeta) {
+      return res.status(404).json({ message: `No document uploaded for slot '${documentType}'` });
+    }
+
+    const viewResult = await storageService.generateSignedViewUrl(docMeta);
+    if (!viewResult) {
+      return res.status(404).json({ message: 'Unable to resolve view URL for document' });
+    }
+
+    if (viewResult.storageProvider === 'blob') {
+      return res.status(200).json({
+        url: viewResult.url,
+        storageProvider: 'blob'
+      });
+    }
+
+    return res.status(200).json({
+      url: `/api/admin/applications/${application._id}/documents/${documentType}/file`,
+      storageProvider: 'local'
+    });
+  } catch (error) {
+    console.error('Get admin document view URL error:', error);
+    return res.status(500).json({ message: 'Error generating admin document view URL' });
   }
 };
 
@@ -299,5 +360,6 @@ module.exports = {
   getAdminApplications,
   getAdminApplicationById,
   streamAdminDocumentFile,
+  getAdminDocumentViewUrl,
   updateApplicationStatusByAdmin
 };

@@ -153,6 +153,12 @@ export class AdminService {
     );
   }
 
+  getAdminDocumentViewUrl(applicationId: string, documentType: string): Observable<{ url: string; storageProvider: 'local' | 'blob' }> {
+    return this.http.get<{ url: string; storageProvider: 'local' | 'blob' }>(
+      `${this.API_URL}/${applicationId}/documents/${documentType}/view-url`
+    );
+  }
+
   downloadAdminDocument(applicationId: string, documentType: string): Observable<Blob> {
     return this.http.get(`${this.API_URL}/${applicationId}/documents/${documentType}/file`, {
       responseType: 'blob'

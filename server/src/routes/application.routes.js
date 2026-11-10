@@ -40,7 +40,10 @@ router.get('/me/status', allowRoles('applicant'), applicationController.getMyApp
 
 // Applicant Document Routes
 router.get('/me/documents', allowRoles('applicant'), documentController.getDocumentMetadata);
+router.get('/me/documents/:documentType/view-url', allowRoles('applicant'), documentController.getDocumentViewUrl);
 router.get('/me/documents/:documentType/file', allowRoles('applicant'), documentController.streamDocumentFile);
+router.post('/me/documents/:documentType/signed-upload-url', allowRoles('applicant'), documentController.getSignedUploadUrl);
+router.post('/me/documents/:documentType/confirm', allowRoles('applicant'), documentController.confirmDocumentUpload);
 router.post('/me/documents/:documentType', allowRoles('applicant'), handleMulterUpload, documentController.uploadDocument);
 router.delete('/me/documents/:documentType', allowRoles('applicant'), documentController.deleteDocument);
 

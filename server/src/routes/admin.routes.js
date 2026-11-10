@@ -15,6 +15,7 @@ router.get('/analytics', adminAnalyticsController.getAdminAnalytics);
 // Admin Application Review Routes
 router.get('/', adminController.getAdminApplications);
 router.get('/:applicationId', adminController.getAdminApplicationById);
+router.get('/:applicationId/documents/:documentType/view-url', adminController.getAdminDocumentViewUrl);
 router.get('/:applicationId/documents/:documentType/file', adminController.streamAdminDocumentFile);
 router.patch('/:applicationId/status', adminController.updateApplicationStatusByAdmin);
 

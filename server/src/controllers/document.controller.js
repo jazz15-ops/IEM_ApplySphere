@@ -2,16 +2,15 @@ const path = require('path');
 const fs = require('fs');
 const Application = require('../models/Application');
 const { ALLOWED_DOCUMENT_TYPES } = require('../middleware/upload.middleware');
+const storageService = require('../services/storage.service');
 
 // Helper to resolve physical document path safely in root uploads/
 const getPhysicalFilePath = (applicationId, storedName) => {
-  const uploadsDir = path.resolve(__dirname, '../../../uploads/applications');
-  const targetDir = path.join(uploadsDir, applicationId.toString());
-  const safeFilename = path.basename(storedName);
-  return path.join(targetDir, safeFilename);
+  return storageService.getPhysicalFilePath(applicationId, storedName);
 };
 
 // POST /api/applications/me/documents/:documentType
+// Local development multipart upload endpoint (preserved unchanged)
 const uploadDocument = async (req, res) => {
   try {
     const documentType = req.params.documentType;
@@ -52,6 +51,7 @@ const uploadDocument = async (req, res) => {
       originalName: req.file.originalname,
       storedName: req.file.filename,
       relativePath,
+      storageProvider: 'local',
       mimeType: req.file.mimetype,
       size: req.file.size,
       uploadedAt: new Date()
@@ -64,16 +64,9 @@ const uploadDocument = async (req, res) => {
 
     await application.save();
 
-    // After DB save succeeds, remove old file from disk if present
-    if (oldDocument && oldDocument.storedName && oldDocument.storedName !== req.file.filename) {
-      const oldFilePath = getPhysicalFilePath(application._id, oldDocument.storedName);
-      if (fs.existsSync(oldFilePath)) {
-        try {
-          fs.unlinkSync(oldFilePath);
-        } catch (err) {
-          console.error(`Failed to cleanup old document ${oldFilePath}:`, err.message);
-        }
-      }
+    // After DB save succeeds, remove old file (local or blob) if present
+    if (oldDocument && (oldDocument.storedName !== req.file.filename || oldDocument.storageProvider === 'blob')) {
+      await storageService.deleteStoredFile(application._id, oldDocument);
     }
 
     return res.status(200).json({
@@ -87,6 +80,102 @@ const uploadDocument = async (req, res) => {
     }
     console.error('Upload document error:', error);
     return res.status(500).json({ message: error.message || 'Error uploading document' });
+  }
+};
+
+// POST /api/applications/me/documents/:documentType/signed-upload-url
+// Generates short-lived signed PUT URL for direct browser upload to Private Blob
+const getSignedUploadUrl = async (req, res) => {
+  try {
+    const documentType = req.params.documentType;
+    const { originalName, mimeType, size } = req.body || {};
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(documentType)) {
+      return res.status(400).json({ message: `Invalid document type '${documentType}'` });
+    }
+
+    const application = req.application || (await Application.findOne({ applicant: req.user._id }));
+    if (!application) {
+      return res.status(404).json({ message: 'No admission application found. Create an application draft first.' });
+    }
+
+    // SERVER-SIDE LOCK: Submitted applications cannot accept new document uploads
+    if (application.status !== 'DRAFT') {
+      return res.status(400).json({ message: 'Submitted applications can no longer accept document uploads.' });
+    }
+
+    const result = await storageService.generateSignedUploadUrl({
+      applicationId: application._id,
+      documentType,
+      originalName,
+      mimeType,
+      size
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('Get signed upload URL error:', error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ message: error.message || 'Error generating signed upload URL' });
+  }
+};
+
+// POST /api/applications/me/documents/:documentType/confirm
+// Verifies that direct-uploaded blob exists and is valid before saving metadata to MongoDB
+const confirmDocumentUpload = async (req, res) => {
+  try {
+    const documentType = req.params.documentType;
+    const { pathname, originalName, mimeType } = req.body || {};
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(documentType)) {
+      return res.status(400).json({ message: `Invalid document type '${documentType}'` });
+    }
+
+    if (!pathname) {
+      return res.status(400).json({ message: 'Missing blob pathname for verification.' });
+    }
+
+    const application = req.application || (await Application.findOne({ applicant: req.user._id }));
+    if (!application) {
+      return res.status(404).json({ message: 'No admission application found.' });
+    }
+
+    // SERVER-SIDE LOCK: Submitted applications cannot accept document modifications
+    if (application.status !== 'DRAFT') {
+      return res.status(400).json({ message: 'Submitted applications can no longer accept document modifications.' });
+    }
+
+    const verifiedMeta = await storageService.verifyAndFinalizeBlobUpload({
+      applicationId: application._id,
+      documentType,
+      pathname,
+      originalName,
+      mimeType
+    });
+
+    const oldDocument = application.documents ? application.documents[documentType] : null;
+
+    if (!application.documents) {
+      application.documents = {};
+    }
+    application.documents[documentType] = verifiedMeta;
+
+    await application.save();
+
+    // After DB save succeeds, safely cleanup old document if it was replaced
+    if (oldDocument && (oldDocument.storedName || oldDocument.relativePath)) {
+      await storageService.deleteStoredFile(application._id, oldDocument);
+    }
+
+    return res.status(200).json({
+      message: `Document '${documentType}' uploaded successfully`,
+      documentType,
+      metadata: verifiedMeta
+    });
+  } catch (error) {
+    console.error('Confirm document upload error:', error);
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({ message: error.message || 'Error confirming document upload' });
   }
 };
 
@@ -114,23 +203,12 @@ const deleteDocument = async (req, res) => {
       return res.status(404).json({ message: `No document uploaded for '${documentType}'` });
     }
 
-    const storedName = docMeta.storedName;
-
-    // Remove metadata from MongoDB
+    // Remove metadata from MongoDB first
     application.documents[documentType] = null;
     await application.save();
 
-    // Remove file from local disk cleanly
-    if (storedName) {
-      const physicalPath = getPhysicalFilePath(application._id, storedName);
-      if (fs.existsSync(physicalPath)) {
-        try {
-          fs.unlinkSync(physicalPath);
-        } catch (err) {
-          console.error(`Failed to delete physical file ${physicalPath}:`, err.message);
-        }
-      }
-    }
+    // Safely remove file from local disk or Private Blob
+    await storageService.deleteStoredFile(application._id, docMeta);
 
     return res.status(200).json({
       message: `Document '${documentType}' deleted successfully`,
@@ -171,7 +249,51 @@ const getDocumentMetadata = async (req, res) => {
   }
 };
 
+// GET /api/applications/me/documents/:documentType/view-url
+// Returns short-lived signed GET URL for Blob or relative path for local disk
+const getDocumentViewUrl = async (req, res) => {
+  try {
+    const documentType = req.params.documentType;
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(documentType)) {
+      return res.status(400).json({ message: `Invalid document type '${documentType}'` });
+    }
+
+    const application = await Application.findOne({ applicant: req.user._id });
+    if (!application) {
+      return res.status(404).json({ message: 'No application found' });
+    }
+
+    const docMeta = application.documents ? application.documents[documentType] : null;
+    if (!docMeta) {
+      return res.status(404).json({ message: `No document file found for slot '${documentType}'` });
+    }
+
+    const viewResult = await storageService.generateSignedViewUrl(docMeta);
+    if (!viewResult) {
+      return res.status(404).json({ message: 'Unable to resolve view URL for document' });
+    }
+
+    if (viewResult.storageProvider === 'blob') {
+      return res.status(200).json({
+        url: viewResult.url,
+        storageProvider: 'blob'
+      });
+    }
+
+    // Local filesystem preview URL
+    return res.status(200).json({
+      url: `/api/applications/me/documents/${documentType}/file`,
+      storageProvider: 'local'
+    });
+  } catch (error) {
+    console.error('Get document view URL error:', error);
+    return res.status(500).json({ message: 'Error generating document view URL' });
+  }
+};
+
 // GET /api/applications/me/documents/:documentType/file
+// Streams local physical file or redirects to short-lived signed GET URL for Blob
 const streamDocumentFile = async (req, res) => {
   try {
     const documentType = req.params.documentType;
@@ -186,11 +308,19 @@ const streamDocumentFile = async (req, res) => {
     }
 
     const docMeta = application.documents ? application.documents[documentType] : null;
-    if (!docMeta || !docMeta.storedName) {
+    if (!docMeta || (!docMeta.storedName && !docMeta.relativePath)) {
       return res.status(404).json({ message: `No document file found for slot '${documentType}'` });
     }
 
-    const filePath = getPhysicalFilePath(application._id, docMeta.storedName);
+    if (storageService.isBlobDocument(docMeta)) {
+      const viewResult = await storageService.generateSignedViewUrl(docMeta);
+      if (viewResult && viewResult.url) {
+        return res.redirect(302, viewResult.url);
+      }
+      return res.status(404).json({ message: 'Failed to generate signed view URL for blob' });
+    }
+
+    const filePath = storageService.getPhysicalFilePath(application._id, docMeta.storedName);
 
     // Verify path traversal prevention
     const uploadsDir = path.resolve(__dirname, '../../../uploads/applications');
@@ -212,7 +342,10 @@ const streamDocumentFile = async (req, res) => {
 
 module.exports = {
   uploadDocument,
+  getSignedUploadUrl,
+  confirmDocumentUpload,
   deleteDocument,
   getDocumentMetadata,
+  getDocumentViewUrl,
   streamDocumentFile
 };
