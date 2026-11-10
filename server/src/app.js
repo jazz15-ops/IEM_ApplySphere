@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth.routes');
 const testRoutes = require('./routes/test.routes');
 const applicationRoutes = require('./routes/application.routes');
@@ -19,6 +20,16 @@ app.get('/api/health', (req, res) => {
     project: 'IEM ApplySphere',
     timestamp: new Date().toISOString()
   });
+});
+
+// Database connection middleware - ensures DB is connected in serverless / multi-environment execution
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 // API Routes
