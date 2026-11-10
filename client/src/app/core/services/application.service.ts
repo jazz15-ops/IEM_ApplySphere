@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface AcademicRecord {
   board?: string;
@@ -109,7 +110,7 @@ export interface ApplicationStatusResponse {
 })
 export class ApplicationService {
   private http = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:3000/api/applications';
+  private readonly API_URL = `${environment.apiUrl}/applications`;
 
   createApplication(payload: Partial<Application> = {}): Observable<{ message: string; application: Application }> {
     return this.http.post<{ message: string; application: Application }>(this.API_URL, payload);

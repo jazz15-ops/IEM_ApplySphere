@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError, of } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface User {
   _id: string;
@@ -28,7 +29,7 @@ export class AuthService {
 
   private readonly TOKEN_KEY = 'applysphere_token';
   private readonly USER_KEY = 'applysphere_user';
-  private readonly API_URL = 'http://localhost:3000/api/auth';
+  private readonly API_URL = `${environment.apiUrl}/auth`;
 
   currentUserSignal = signal<User | null>(this.getStoredUser());
   tokenSignal = signal<string | null>(this.getToken());

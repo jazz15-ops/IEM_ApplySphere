@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 import { AcademicRecord, DocumentSlots, ReadinessResponse, StatusHistoryEntry } from './application.service';
 
 export interface AdminApplicationListItem {
@@ -122,8 +123,8 @@ export interface AdminAnalyticsResponse {
 })
 export class AdminService {
   private http = inject(HttpClient);
-  private readonly API_URL = 'http://localhost:3000/api/admin/applications';
-  private readonly ANALYTICS_URL = 'http://localhost:3000/api/admin/analytics';
+  private readonly API_URL = `${environment.apiUrl}/admin/applications`;
+  private readonly ANALYTICS_URL = `${environment.apiUrl}/admin/analytics`;
 
   getAnalytics(): Observable<AdminAnalyticsResponse> {
     return this.http.get<AdminAnalyticsResponse>(this.ANALYTICS_URL);
